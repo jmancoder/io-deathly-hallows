@@ -1,6 +1,11 @@
+import json
+from pathlib import Path
+
 import bpy
 from bpy.props import StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
+
+from .msh_reader import MSHReader
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
@@ -23,11 +28,12 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
-        with open(self.filepath, "rb") as f:
-            magic = f.read(4)
-        if magic != b"THNG":
-            self.report({"ERROR"}, "Not a valid file")
-            return {"CANCELLED"}
+        settings = context.scene.iodh_settings
+        with open(settings.manifest_path, "rt") as f:
+            manifest = json.load(f)
+
+        reader = MSHReader(Path(settings.manifest_path).parent, manifest)
+        reader.read_msh(Path(self.filepath))
         return {"FINISHED"}
 
 
