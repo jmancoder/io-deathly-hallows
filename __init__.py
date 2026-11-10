@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 import bpy
@@ -6,6 +7,15 @@ from bpy.props import StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
 
 from .msh_reader import MSHReader
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(levelname)s: %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 class IODH_Settings(bpy.types.PropertyGroup):

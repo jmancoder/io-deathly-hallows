@@ -39,7 +39,7 @@ class MSHReader:
 
     def read_shape(self, shape_id: int) -> Shape:
         shape_path = self.get_path(shape_id)
-        logger.info("Reading shape %s", shape_path)
+        logger.info('Reading shape file "%s"', shape_path)
         bs = self.create_reader(shape_path)
         properties = self.get_string(bs.read_uint32())
         bs.read_vec3f()
@@ -67,6 +67,7 @@ class MSHReader:
         vertex_buf_size = bs.read_uint32()
         bs.read_int32()
         bs.read_int32()
+        bs.seek(48, 1)
         face_buf_id = bs.read_uint32()
         face_buf_size = bs.read_uint32()
         bs.read_int32()
@@ -91,29 +92,36 @@ class MSHReader:
         bs.read_int32()
 
         # Read vertices
-        unk_attr_size = vertex_buf_size // vertex_count - 12
-        vertex_dtype = np.dtype(
-            [("position", "<f4", 3), ("unknown", "<u1", unk_attr_size)]
-        )
-        vertices = np.fromfile(
-            self.get_path(vertex_buf_id), vertex_dtype, vertex_count
-        )
-
-        # Read face indices
-        face_idx_stride = face_buf_size // face_idx_count
-        if face_idx_stride == 2:
-            face_indices = np.fromfile(
-                self.get_path(face_buf_id), "<u2", face_idx_count
+        if vertex_count > 0:
+            unk_attr_size = vertex_buf_size // vertex_count - 12
+            vertex_dtype = np.dtype(
+                [("position", "<f4", 3), ("unknown", "<u1", unk_attr_size)]
             )
-        elif face_idx_stride == 4:
-            face_indices = np.fromfile(
-                self.get_path(face_buf_id), "<u4", face_idx_count
+            vertices = np.fromfile(
+                self.get_path(vertex_buf_id), vertex_dtype, vertex_count
             )
         else:
-            raise ValueError(f"Unexpected face index stride {face_idx_stride}")
+            vertices = np.array([])
+
+        # Read face indices
+        if face_idx_count > 0:
+            face_idx_stride = face_buf_size // face_idx_count
+            if face_idx_stride == 2:
+                face_indices = np.fromfile(
+                    self.get_path(face_buf_id), "<u2", face_idx_count
+                )
+            elif face_idx_stride == 4:
+                face_indices = np.fromfile(
+                    self.get_path(face_buf_id), "<u4", face_idx_count
+                )
+            else:
+                raise ValueError(f"Unexpected face index stride {face_idx_stride}")
+        else:
+            face_indices = np.array([])
         return Shape(properties, vertices, face_indices)
 
     def read_msh(self, msh_path: Path) -> None:
+        logger.info('Reading msh file "%s"', msh_path)
         bs = self.create_reader(msh_path)
         assert bs.read_uint32() == 0
         assert bs.read_uint32() == 0
@@ -123,7 +131,7 @@ class MSHReader:
         node_table_id = bs.read_uint32()
 
         shape_table_path = self.get_path(shape_table_id)
-        logger.info("Reading shape table %s", shape_table_path)
+        logger.info('Reading shape table file "%s"', shape_table_path)
         bs = self.create_reader(shape_table_path)
         shape_id_table = [bs.read_uint32() for _ in range(shape_count)]
         shapes = [self.read_shape(shape_id) for shape_id in shape_id_table]
