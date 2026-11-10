@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class Shape:
-    properties: str
+    delimited_name: str
     vertices: npt.NDArray
     face_indices: npt.NDArray
 
@@ -120,7 +120,7 @@ class MSHReader:
             face_indices = np.array([])
         return Shape(properties, vertices, face_indices)
 
-    def read_msh(self, msh_path: Path) -> None:
+    def read_msh(self, msh_path: Path) -> list[Shape]:
         logger.info('Reading msh file "%s"', msh_path)
         bs = self.create_reader(msh_path)
         assert bs.read_uint32() == 0
@@ -135,3 +135,4 @@ class MSHReader:
         bs = self.create_reader(shape_table_path)
         shape_id_table = [bs.read_uint32() for _ in range(shape_count)]
         shapes = [self.read_shape(shape_id) for shape_id in shape_id_table]
+        return shapes

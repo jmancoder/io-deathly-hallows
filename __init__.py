@@ -7,6 +7,7 @@ from bpy.props import StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
 
 from .msh_reader import MSHReader
+from . import msh_importer
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -43,7 +44,9 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
             manifest = json.load(f)
 
         reader = MSHReader(Path(settings.manifest_path).parent, manifest)
-        reader.read_msh(Path(self.filepath))
+        shapes = reader.read_msh(Path(self.filepath))
+        for shape in shapes:
+            msh_importer.import_shape(context, shape)
         return {"FINISHED"}
 
 
