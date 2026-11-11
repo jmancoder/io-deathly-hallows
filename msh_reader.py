@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class Shape:
-    delimited_name: str
+    file_id: int
+    name: str
     vertices: npt.NDArray
     face_indices: npt.NDArray
 
@@ -41,7 +42,7 @@ class MSHReader:
         shape_path = self.get_path(shape_id)
         logger.info('Reading shape file "%s"', shape_path)
         bs = self.create_reader(shape_path)
-        properties = self.get_string(bs.read_uint32())
+        shape_name = self.get_string(bs.read_uint32())
         bs.read_vec3f()
         bs.read_int32()
         bs.read_vec3f()
@@ -93,12 +94,22 @@ class MSHReader:
 
         # Read vertices
         if vertex_count > 0:
-            unk_attr_size = vertex_buf_size // vertex_count - 12
-            vertex_dtype = np.dtype(
-                [("position", "<f4", 3), ("unknown", "<u1", unk_attr_size)]
-            )
+            vertex_stride = vertex_buf_size // vertex_count
+            vertex_fields = [("position", "<f4", 3)]
+            if vertex_stride >= 16:
+                vertex_fields.append(("normal", "<u1", 4))
+            if vertex_stride >= 20:
+                vertex_fields.append(("uv_1", "<f2", 2))
+            if vertex_stride >= 24:
+                vertex_fields.append(("uv_0", "<f2", 2))
+            if vertex_stride >= 28:
+                vertex_fields.append(("uv_2", "<f2", 2))
+            if vertex_stride >= 32:
+                vertex_fields.append(("color", "u1", 4))
+            if vertex_stride > 32:
+                vertex_fields.append(("unk", "u1", vertex_stride - 32))
             vertices = np.fromfile(
-                self.get_path(vertex_buf_id), vertex_dtype, vertex_count
+                self.get_path(vertex_buf_id), np.dtype(vertex_fields), vertex_count
             )
         else:
             vertices = np.array([])
@@ -118,7 +129,7 @@ class MSHReader:
                 raise ValueError(f"Unexpected face index stride {face_idx_stride}")
         else:
             face_indices = np.array([])
-        return Shape(properties, vertices, face_indices)
+        return Shape(shape_id, shape_name, vertices, face_indices)
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
         logger.info('Reading msh file "%s"', msh_path)
