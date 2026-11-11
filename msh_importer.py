@@ -1,4 +1,5 @@
 import bpy
+from bpy.types import Image
 import numpy as np
 import numpy.typing as npt
 
@@ -51,3 +52,14 @@ def import_shape(context: bpy.types.Context, shape: Shape) -> None:
         mesh_name = name
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
     context.collection.objects.link(mesh_obj)
+
+    # Import images
+    image_map: dict[int, Image] = {}
+    for mat_data in shape.materials:
+        for tex_type, texture in mat_data.texture_map.items():
+            if texture.name in bpy.data.images:
+                continue
+            image = image_map[texture.file_id] = bpy.data.images.load(
+                str(texture.data_path)
+            )
+            image.name = texture.name
