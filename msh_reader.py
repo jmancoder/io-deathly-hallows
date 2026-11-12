@@ -38,11 +38,21 @@ class Material:
 
 
 @dataclass(slots=True)
+class MaterialSlot:
+    unk_int: int
+    start_poly: int
+    poly_count: int
+    material_index: int
+    flags: int
+
+
+@dataclass(slots=True)
 class Shape:
     file_id: int
     name: str
     vertices: npt.NDArray
     face_indices: npt.NDArray
+    slots: list[MaterialSlot]
     materials: list[Material]
 
 
@@ -84,6 +94,18 @@ class MSHReader:
         data_id = bs.read_uint32()
         data_path = self.get_path(data_id)
         return Texture(tex_id, data_id, tex_path.stem, data_path, width, height, size)
+
+    def read_material_slot(self, bs: BinaryReader) -> MaterialSlot:
+        unk_int = bs.read_int32()
+        start_poly = bs.read_uint32()
+        poly_count = bs.read_uint32()
+        group_idx = bs.read_int32()
+        bs.read_int32()
+        bs.read_int32()
+        bs.read_int32()
+        bs.read_int32()
+        flags = bs.read_uint32()
+        return MaterialSlot(unk_int, start_poly, poly_count, group_idx, flags)
 
     def read_material(self, bs: BinaryReader) -> Material:
         mat_start = bs.tell()
@@ -298,7 +320,7 @@ class MSHReader:
         bs.read_int32()
         vertex_count = bs.read_uint32()
         face_idx_count = bs.read_uint32()
-        bs.read_int32()
+        slot_count = bs.read_uint32()
         material_count = bs.read_int32()
         vertex_type_id = bs.read_uint32()
         face_type_id = bs.read_uint32()
@@ -317,16 +339,16 @@ class MSHReader:
         bs.read_int32()
         bs.read_int32()
         bs.read_matrix_4x4()
-        unk_id_0 = bs.read_uint32()
+        slot_group_id = bs.read_uint32()
         material_group_id = bs.read_uint32()
-        unk_id_1 = bs.read_uint32()
+        material_prop_group_id = bs.read_uint32()
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
-        unk_size = bs.read_uint32()
-        unk_id_2 = bs.read_uint32()
+        unk_flags = bs.read_uint32()
+        unk_id = bs.read_uint32()
         bs.read_int32()
         bs.read_int32()
 
@@ -362,6 +384,12 @@ class MSHReader:
         else:
             face_indices = np.array([])
 
+        # Read material slot group
+        slot_group_path = self.get_path(slot_group_id)
+        logger.info('Reading material slot group file "%s"', slot_group_path)
+        bs = self.create_reader(slot_group_path)
+        slots = [self.read_material_slot(bs) for _ in range(slot_count)]
+
         # Read material group
         if material_group_id not in self.asset_pool:
             material_group_path = self.get_path(material_group_id)
@@ -371,7 +399,7 @@ class MSHReader:
             self.asset_pool[material_group_id] = materials
         else:
             materials = self.asset_pool[material_group_id]
-        return Shape(shape_id, shape_name, vertices, face_indices, materials)
+        return Shape(shape_id, shape_name, vertices, face_indices, slots, materials)
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
         logger.info('Reading msh file "%s"', msh_path)

@@ -102,6 +102,20 @@ def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
             normals = raw_normals
         mesh.normals_split_custom_set_from_vertices(normals)
 
+    # Import materials
+    for mat_data in shape.materials:
+        if mat_data.name in bpy.data.materials:
+            mesh.materials.append(bpy.data.materials.get(mat_data.name))
+        else:
+            mesh.materials.append(import_material(mat_data))
+
+    # Assign materials
+    material_indices = np.empty(len(mesh.polygons), dtype=np.int32)
+    for slot in shape.slots:
+        end_poly = slot.start_poly + slot.poly_count
+        material_indices[slot.start_poly : end_poly] = slot.material_index
+    mesh.polygons.foreach_set("material_index", material_indices)
+
     # Create mesh object with stored name
     mesh_name = "Mesh"
     for name in shape.name.split("|")[2:]:
@@ -110,10 +124,3 @@ def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
         mesh_name = name
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
     context.collection.objects.link(mesh_obj)
-
-    # Import materials
-    for mat_data in shape.materials:
-        if mat_data.name in bpy.data.materials:
-            mesh.materials.append(bpy.data.materials.get(mat_data.name))
-        else:
-            mesh.materials.append(import_material(mat_data))
