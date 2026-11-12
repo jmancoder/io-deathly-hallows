@@ -362,11 +362,15 @@ class MSHReader:
         else:
             face_indices = np.array([])
 
-        # Read materials
-        material_group_path = self.get_path(material_group_id)
-        logger.info('Reading material group file "%s"', material_group_path)
-        bs = self.create_reader(material_group_path)
-        materials = [self.read_material(bs) for _ in range(material_count)]
+        # Read material group
+        if material_group_id not in self.asset_pool:
+            material_group_path = self.get_path(material_group_id)
+            logger.info('Reading material group file "%s"', material_group_path)
+            bs = self.create_reader(material_group_path)
+            materials = [self.read_material(bs) for _ in range(material_count)]
+            self.asset_pool[material_group_id] = materials
+        else:
+            materials = self.asset_pool[material_group_id]
         return Shape(shape_id, shape_name, vertices, face_indices, materials)
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
