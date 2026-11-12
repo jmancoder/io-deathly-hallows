@@ -1,9 +1,8 @@
 import bpy
-from bpy.types import Image
 import numpy as np
 import numpy.typing as npt
 
-from .msh_reader import Shape
+from . import msh_reader
 
 
 def convert_normals(theta_b: npt.NDArray[np.uint8], phi_b: npt.NDArray[np.uint8]):
@@ -12,7 +11,61 @@ def convert_normals(theta_b: npt.NDArray[np.uint8], phi_b: npt.NDArray[np.uint8]
     return -np.stack([np.sin(t) * np.cos(f), np.cos(t), np.sin(t) * np.sin(f)], axis=-1)
 
 
-def import_shape(context: bpy.types.Context, shape: Shape) -> None:
+def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
+    mat = bpy.data.materials.new(material_data.name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    links = mat.node_tree.links
+
+    # Import textures/images
+    for tex_type, tex_data in material_data.texture_map.items():
+        if tex_data.name in bpy.data.images:
+            image = bpy.data.images.get(tex_data.name)
+        else:
+            image = bpy.data.images.load(str(tex_data.data_path))
+            image.name = tex_data.name
+
+        img_node = nodes.new("ShaderNodeTexImage")
+        img_node.image = image
+
+        if tex_type == "sp:t_colour":
+            image.colorspace_settings.name = "sRGB"
+            img_node.location = (-1000.0, 250.0)
+            links.new(img_node.outputs["Color"], bsdf.inputs["Base Color"])
+
+        elif tex_type == "sp:t_normal":
+            image.colorspace_settings.name = "Non-Color"
+            img_node.location = (-1000.0, -250.0)
+
+            norm_map_node = nodes.new("ShaderNodeNormalMap")
+            norm_map_node.convention = "DIRECTX"
+            norm_map_node.location = (-500.0, -250.0)
+
+            links.new(img_node.outputs["Color"], norm_map_node.inputs["Color"])
+            links.new(norm_map_node.outputs["Normal"], bsdf.inputs["Normal"])
+
+        elif tex_type == "sp:t_spec":
+            image.colorspace_settings.name = "Non-Color"
+            img_node.location = (-1000.0, 0.0)
+
+            sep_node = nodes.new("ShaderNodeSeparateColor")
+            sep_node.location = (-600.0, 0.0)
+
+            one_minus_node = nodes.new("ShaderNodeMath")
+            one_minus_node.operation = "SUBTRACT"
+            one_minus_node.inputs[0].default_value = 1.0
+            one_minus_node.location = (-400.0, 0.0)
+
+            links.new(img_node.outputs["Color"], sep_node.inputs["Color"])
+            links.new(sep_node.outputs["Red"], one_minus_node.inputs[1])
+            links.new(one_minus_node.outputs["Value"], bsdf.inputs["Roughness"])
+
+        # TODO: Link secondary textures
+    return mat
+
+
+def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
     # Import positions
     mesh = bpy.data.meshes.new(str(shape.file_id))
     mesh.vertices.add(len(shape.vertices))
@@ -58,13 +111,9 @@ def import_shape(context: bpy.types.Context, shape: Shape) -> None:
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
     context.collection.objects.link(mesh_obj)
 
-    # Import images
-    image_map: dict[int, Image] = {}
+    # Import materials
     for mat_data in shape.materials:
-        for tex_type, texture in mat_data.texture_map.items():
-            if texture.name in bpy.data.images:
-                continue
-            image = image_map[texture.file_id] = bpy.data.images.load(
-                str(texture.data_path)
-            )
-            image.name = texture.name
+        if mat_data.name in bpy.data.materials:
+            mesh.materials.append(bpy.data.materials.get(mat_data.name))
+        else:
+            mesh.materials.append(import_material(mat_data))
