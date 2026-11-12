@@ -40,8 +40,8 @@ class Material:
 @dataclass(slots=True)
 class MaterialSlot:
     unk_int: int
-    start_poly: int
-    poly_count: int
+    start_corner: int
+    corner_count: int
     material_index: int
     flags: int
 
@@ -97,15 +97,15 @@ class MSHReader:
 
     def read_material_slot(self, bs: BinaryReader) -> MaterialSlot:
         unk_int = bs.read_int32()
-        start_poly = bs.read_uint32()
-        poly_count = bs.read_uint32()
-        group_idx = bs.read_int32()
+        start_corner = bs.read_uint32()
+        corner_count = bs.read_uint32()
+        material_idx = bs.read_int32()
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
         flags = bs.read_uint32()
-        return MaterialSlot(unk_int, start_poly, poly_count, group_idx, flags)
+        return MaterialSlot(unk_int, start_corner, corner_count, material_idx, flags)
 
     def read_material(self, bs: BinaryReader) -> Material:
         mat_start = bs.tell()

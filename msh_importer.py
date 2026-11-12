@@ -79,7 +79,6 @@ def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
     mesh.polygons.add(n_triangles)
     mesh.polygons.foreach_set("loop_start", np.arange(n_triangles, dtype=np.int32) * 3)
     mesh.polygons.foreach_set("loop_total", np.full(n_triangles, 3, dtype=np.int32))
-    mesh.update(calc_edges=True)
 
     # Import UVs
     for i in range(4):
@@ -110,11 +109,19 @@ def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
             mesh.materials.append(import_material(mat_data))
 
     # Assign materials
-    material_indices = np.empty(len(mesh.polygons), dtype=np.int32)
-    for slot in shape.slots:
-        end_poly = slot.start_poly + slot.poly_count
-        material_indices[slot.start_poly : end_poly] = slot.material_index
-    mesh.polygons.foreach_set("material_index", material_indices)
+    corner_starts = np.array(
+        [slot.start_corner for slot in shape.slots], dtype=np.int64
+    )
+    material_indices = np.array(
+        [slot.material_index for slot in shape.slots], dtype=np.int32
+    )
+    loop_starts = np.empty(len(mesh.polygons), dtype=np.int32)
+    mesh.polygons.foreach_get("loop_start", loop_starts)
+    poly_mat_indices = material_indices[
+        np.searchsorted(corner_starts, loop_starts, side="right") - 1
+    ]
+    mesh.polygons.foreach_set("material_index", poly_mat_indices)
+    mesh.update(calc_edges=True)
 
     # Create mesh object with stored name
     mesh_name = "Mesh"
