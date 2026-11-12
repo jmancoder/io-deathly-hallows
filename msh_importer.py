@@ -29,7 +29,7 @@ def import_shape(context: bpy.types.Context, shape: Shape) -> None:
     mesh.update(calc_edges=True)
 
     # Import UVs
-    for i in range(2):
+    for i in range(4):
         attr_name = f"uv_{i}"
         if attr_name not in shape.vertices.dtype.names:
             continue
@@ -39,10 +39,15 @@ def import_shape(context: bpy.types.Context, shape: Shape) -> None:
         uv_layer = mesh.uv_layers.new(name=f"UVMap{i}")
         uv_layer.data.foreach_set("uv", uvs.ravel())
 
-    # Unpack and import spherical normals
-    raw_normals = shape.vertices["normal"]
-    normals = convert_normals(raw_normals[:, 3], raw_normals[:, 2])
-    mesh.normals_split_custom_set_from_vertices(normals)
+    # Import normals
+    if "normal" in shape.vertices.dtype.names:
+        raw_normals = shape.vertices["normal"]
+        if raw_normals.itemsize == 1:
+            # Unpack 8-bit spherical normals
+            normals = convert_normals(raw_normals[:, 3], raw_normals[:, 2])
+        else:
+            normals = raw_normals
+        mesh.normals_split_custom_set_from_vertices(normals)
 
     # Create mesh object with stored name
     mesh_name = "Mesh"

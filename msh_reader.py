@@ -123,6 +123,159 @@ class MSHReader:
         bs.seek(mat_start + 0x900)
         return Material(mat_name, template_name, tex_map, props)
 
+    def _get_vertex_dtype(self, dtype_index: int) -> npt.DTypeLike:
+        match dtype_index:
+            case 0:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 1:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 2:
+                return np.dtype([("position", "<f4", 3)])
+            case 3:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 4:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("color", "<u1", 4),
+                        ("uv_0", "<f4", 2),
+                    ]
+                )
+            case 5:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<f4", 3),
+                    ]
+                )
+            case 6:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<f4", 3),
+                        ("color", "<u1", 4),
+                        ("uv_0", "<f4", 2),
+                    ]
+                )
+            case 7:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<f4", 3),
+                        ("uv_0", "<f4", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
+                    ]
+                )
+            case 8:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("uv_2", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 9:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("color", "<u1", 4),
+                        ("uv_0", "<f2", 4),
+                        ("uv_1", "<f4", 2),
+                    ]
+                )
+            case 10:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<f4", 3),
+                        ("binormal", "<f4", 3),
+                        ("uv_0", "<f2", 4),
+                        ("color", "<u1", 4),
+                        ("uv_1", "<f4", 2),
+                    ]
+                )
+            case 11:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("uv_2", "<f4", 3),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 12:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f4", 2),
+                        ("uv_1", "<f4", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
+                        ("uv_2", "<f4", 3),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 13:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("uv_0", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 14:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 15:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case _:
+                raise ValueError(f"Unknown vertex type {dtype_index}")
+
     def read_shape(self, shape_id: int) -> Shape:
         shape_path = self.get_path(shape_id)
         logger.info('Reading shape file "%s"', shape_path)
@@ -147,8 +300,8 @@ class MSHReader:
         face_idx_count = bs.read_uint32()
         bs.read_int32()
         material_count = bs.read_int32()
-        bs.read_int32()
-        bs.read_int32()
+        vertex_type_id = bs.read_uint32()
+        face_type_id = bs.read_uint32()
         bs.read_int32()
         vertex_buf_id = bs.read_uint32()
         vertex_buf_size = bs.read_uint32()
@@ -179,39 +332,33 @@ class MSHReader:
 
         # Read vertices
         if vertex_count > 0:
-            vertex_stride = vertex_buf_size // vertex_count
-            vertex_fields = [("position", "<f4", 3)]
-            if vertex_stride >= 16:
-                vertex_fields.append(("normal", "<u1", 4))
-            if vertex_stride >= 20:
-                vertex_fields.append(("uv_1", "<f2", 2))
-            if vertex_stride >= 24:
-                vertex_fields.append(("uv_0", "<f2", 2))
-            if vertex_stride >= 28:
-                vertex_fields.append(("uv_2", "<f2", 2))
-            if vertex_stride >= 32:
-                vertex_fields.append(("color", "u1", 4))
-            if vertex_stride > 32:
-                vertex_fields.append(("unk", "u1", vertex_stride - 32))
+            vertex_dtype = self._get_vertex_dtype(vertex_type_id)
+            stride = vertex_buf_size // vertex_count
+            if stride != vertex_dtype.itemsize:
+                raise ValueError(
+                    f"Stored vertex stride is {stride}, "
+                    f"but NumPy stride is {vertex_dtype.itemsize}"
+                )
             vertices = np.fromfile(
-                self.get_path(vertex_buf_id), np.dtype(vertex_fields), vertex_count
+                self.get_path(vertex_buf_id),
+                vertex_dtype,
+                vertex_count,
             )
         else:
             vertices = np.array([])
 
         # Read face indices
         if face_idx_count > 0:
-            face_idx_stride = face_buf_size // face_idx_count
-            if face_idx_stride == 2:
+            if face_type_id == 0:
                 face_indices = np.fromfile(
                     self.get_path(face_buf_id), "<u2", face_idx_count
                 )
-            elif face_idx_stride == 4:
+            elif face_type_id == 1:
                 face_indices = np.fromfile(
                     self.get_path(face_buf_id), "<u4", face_idx_count
                 )
             else:
-                raise ValueError(f"Unexpected face index stride {face_idx_stride}")
+                raise NotImplementedError(f"Unimplemented face type {face_type_id}")
         else:
             face_indices = np.array([])
 
