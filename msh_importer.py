@@ -1,8 +1,72 @@
+import logging
+
 import bpy
 import numpy as np
 import numpy.typing as npt
 
 from . import msh_reader
+
+logger = logging.getLogger(__name__)
+
+
+def create_gfx_world_group() -> bpy.types.ShaderNodeTree:
+    group = bpy.data.node_groups.new(name="gfx_world", type="ShaderNodeTree")
+    group.interface.new_socket(
+        name="t_colour", in_out="INPUT", socket_type="NodeSocketColor"
+    )
+    socket = group.interface.new_socket(
+        name="t_colour_alpha", in_out="INPUT", socket_type="NodeSocketFloat"
+    )
+    socket.default_value = 1.0
+    socket.min_value = 0.0
+    socket.max_value = 1.0
+    group.interface.new_socket(
+        name="t_normal", in_out="INPUT", socket_type="NodeSocketColor"
+    )
+    group.interface.new_socket(
+        name="t_spec", in_out="INPUT", socket_type="NodeSocketColor"
+    )
+    group.interface.new_socket(
+        name="t_detail", in_out="INPUT", socket_type="NodeSocketColor"
+    )
+    group.interface.new_socket(
+        name="t_mask", in_out="INPUT", socket_type="NodeSocketColor"
+    )
+    group.interface.new_socket(
+        name="BSDF", in_out="OUTPUT", socket_type="NodeSocketShader"
+    )
+
+    nodes = group.nodes
+    links = group.links
+
+    input_node = nodes.new(type="NodeGroupInput")
+    input_node.location = (-1000.0, 0.0)
+
+    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+    bsdf.location = (0.0, 0.0)
+    links.new(input_node.outputs["t_colour"], bsdf.inputs["Base Color"])
+    links.new(input_node.outputs["t_colour_alpha"], bsdf.inputs["Alpha"])
+
+    sep_color_node = nodes.new("ShaderNodeSeparateColor")
+    sep_color_node.location = (-650.0, -250.0)
+    one_minus_node = nodes.new("ShaderNodeMath")
+    one_minus_node.operation = "SUBTRACT"
+    one_minus_node.inputs[0].default_value = 1.0
+    one_minus_node.location = (-350.0, -250.0)
+    links.new(input_node.outputs["t_spec"], sep_color_node.inputs["Color"])
+    links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
+    links.new(one_minus_node.outputs["Value"], bsdf.inputs["Roughness"])
+
+    norm_map_node = nodes.new("ShaderNodeNormalMap")
+    norm_map_node.convention = "DIRECTX"
+    norm_map_node.location = (-500.0, -500.0)
+    links.new(input_node.outputs["t_normal"], norm_map_node.inputs["Color"])
+    links.new(norm_map_node.outputs["Normal"], bsdf.inputs["Normal"])
+
+    output_node = nodes.new(type="NodeGroupOutput")
+    output_node.location = (1000.0, 0.0)
+    links.new(bsdf.outputs["BSDF"], output_node.inputs["BSDF"])
+    return group
 
 
 def create_gfx_layered_group() -> bpy.types.ShaderNodeTree:
@@ -128,18 +192,21 @@ def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
     nodes.clear()
     links.clear()
 
-    # Create group
+    # Create node group if necessary
     match material_data.shader_name:
         case "gfx_layered":
             group_tree = bpy.data.node_groups.get("gfx_layered")
             if group_tree is None:
                 group_tree = create_gfx_layered_group()
-        case _:
-            # Store in custom attribute for testing
-            material["shader_name"] = material_data.shader_name
-            group_tree = bpy.data.node_groups.get("gfx_layered")
+        case "gfx_world":
+            group_tree = bpy.data.node_groups.get("gfx_world")
             if group_tree is None:
-                group_tree = create_gfx_layered_group()
+                group_tree = create_gfx_world_group()
+        case _:
+            group_tree = bpy.data.node_groups.get(material_data.shader_name)
+            if group_tree is None:
+                group_tree = create_gfx_world_group()
+                group_tree.name = material_data.shader_name
 
     # Add group and output nodes
     group_node = nodes.new(type="ShaderNodeGroup")
@@ -220,6 +287,9 @@ def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
                 links.new(img_node.outputs["Color"], group_node.inputs["t_mask"])
 
             case _:
+                logger.warning(
+                    "%s uses image of unimplemented type %s", material.name, img_type
+                )
                 img.colorspace_settings.name = "Non-Color"
                 img_node = nodes.new("ShaderNodeTexImage")
                 img_node.image = img
