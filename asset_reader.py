@@ -56,7 +56,7 @@ class Shape:
     materials: list[Material]
 
 
-class MSHReader:
+class AssetReader:
     def __init__(self, root_path: Path, manifest: dict) -> None:
         self.root_path = root_path
         self.archive_name = root_path.name

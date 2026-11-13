@@ -6,8 +6,8 @@ import bpy
 from bpy.props import StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
 
-from .msh_reader import MSHReader
-from . import msh_importer
+from .asset_reader import AssetReader
+from . import asset_importer
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,10 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
         with open(settings.manifest_path, "rt") as f:
             manifest = json.load(f)
 
-        reader = MSHReader(Path(settings.manifest_path).parent, manifest)
+        reader = AssetReader(Path(settings.manifest_path).parent, manifest)
         shapes = reader.read_msh(Path(self.filepath))
         for shape in shapes:
-            msh_importer.import_shape(context, shape)
+            asset_importer.import_shape(context, shape)
         return {"FINISHED"}
 
 

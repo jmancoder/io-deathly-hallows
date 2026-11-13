@@ -4,7 +4,7 @@ import bpy
 import numpy as np
 import numpy.typing as npt
 
-from . import msh_reader
+from . import asset_reader
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +173,7 @@ def create_gfx_layered_group() -> bpy.types.ShaderNodeTree:
     return group
 
 
-def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
+def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
     # Import images
     img_map: dict[str, bpy.types.Image] = {}
     for tex_type, tex_data in material_data.texture_map.items():
@@ -311,7 +311,7 @@ def _decode_normals(hi: npt.NDArray, lo: npt.NDArray) -> npt.NDArray:
     return v * np.column_stack([np.sign(uv), np.sign(hi)])
 
 
-def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
+def import_shape(context: bpy.types.Context, shape: asset_reader.Shape) -> None:
     # Import positions
     mesh = bpy.data.meshes.new(str(shape.file_id))
     mesh.vertices.add(len(shape.vertices))
