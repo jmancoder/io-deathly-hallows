@@ -301,10 +301,14 @@ def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
     return material
 
 
-def _convert_normals(theta_b: npt.NDArray[np.uint8], phi_b: npt.NDArray[np.uint8]):
-    t = theta_b.astype(np.float32) * (2 * np.pi / 256)
-    f = phi_b.astype(np.float32) * (2 * np.pi / 256)
-    return -np.stack([np.sin(t) * np.cos(f), np.cos(t), np.sin(t) * np.sin(f)], axis=-1)
+def _decode_normals(hi: npt.NDArray, lo: npt.NDArray) -> npt.NDArray:
+    hi = hi.astype(np.float32) - 128.0
+    lo = lo.astype(np.float32)
+    uv = (np.stack([np.abs(hi), lo], axis=1) - 64.0) / 63.0
+    mag = np.abs(uv)
+    v = np.column_stack([mag, 1.0 - mag.sum(axis=1)])
+    v /= np.linalg.norm(v, axis=1, keepdims=True)
+    return v * np.column_stack([np.sign(uv), np.sign(hi)])
 
 
 def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
@@ -337,8 +341,7 @@ def import_shape(context: bpy.types.Context, shape: msh_reader.Shape) -> None:
     if "normal" in shape.vertices.dtype.names:
         raw_normals = shape.vertices["normal"]
         if raw_normals.itemsize == 1:
-            # Unpack 8-bit spherical normals
-            normals = _convert_normals(raw_normals[:, 3], raw_normals[:, 2])
+            normals = _decode_normals(raw_normals[:, 2], raw_normals[:, 3])
         else:
             normals = raw_normals
         mesh.normals_split_custom_set_from_vertices(normals)
