@@ -288,7 +288,10 @@ def import_material(material_data: msh_reader.Material) -> bpy.types.Material:
 
             case _:
                 logger.warning(
-                    "%s uses image of unimplemented type %s", material.name, img_type
+                    "Image %s in material %s is of unimplemented type %s",
+                    img.name,
+                    material.name,
+                    img_type,
                 )
                 img.colorspace_settings.name = "Non-Color"
                 img_node = nodes.new("ShaderNodeTexImage")
