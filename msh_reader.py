@@ -406,7 +406,7 @@ class MSHReader:
         return Shape(shape_id, shape_name, vertices, face_indices, slots, materials)
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
-        logger.info('Reading msh file "%s"', msh_path)
+        logger.info('Reading MSH file "%s"', msh_path)
         bs = self.create_reader(msh_path)
 
         assert bs.read_uint32() == 0

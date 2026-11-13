@@ -9,14 +9,7 @@ from bpy_extras.io_utils import ImportHelper
 from .msh_reader import MSHReader
 from . import msh_importer
 
-# Configure logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(levelname)s: %(message)s")
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
@@ -69,12 +62,21 @@ classes = (IODH_Settings, IODH_OT_import_msh, IODH_PT_main)
 
 
 def register():
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(ch)
+
     for c in classes:
         bpy.utils.register_class(c)
     bpy.types.Scene.iodh_settings = PointerProperty(type=IODH_Settings)
 
 
 def unregister():
+    for h in list(logger.handlers):
+        logger.removeHandler(h)
+        h.close()
+
     del bpy.types.Scene.iodh_settings
     for c in reversed(classes):
         bpy.utils.unregister_class(c)
