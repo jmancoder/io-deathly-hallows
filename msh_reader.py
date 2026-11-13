@@ -59,6 +59,7 @@ class Shape:
 class MSHReader:
     def __init__(self, root_path: Path, manifest: dict) -> None:
         self.root_path = root_path
+        self.archive_name = root_path.name
         self.manifest = manifest
         self.asset_pool: dict[int, Any] = {}
 
@@ -69,6 +70,8 @@ class MSHReader:
         name = self.get_string(asset_id)
         if ":" in name:
             category, path = name.split(":")
+            if category != self.archive_name:
+                path += "." + category
         else:
             path = name
         return self.root_path / path

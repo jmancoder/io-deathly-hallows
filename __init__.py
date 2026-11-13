@@ -30,10 +30,10 @@ class IODH_Settings(bpy.types.PropertyGroup):
 class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
     bl_idname = "import_scene.iodh_msh"
     bl_label = "Import MSH"
-    filename_ext = ""
+    filename_ext = "MSH"
 
     filter_glob: StringProperty(
-        default="*",
+        default="*.MSH",
         options={"HIDDEN"},
         maxlen=255,
     )
