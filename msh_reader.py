@@ -32,7 +32,7 @@ class MaterialProperty:
 @dataclass(slots=True)
 class Material:
     name: str
-    template_name: str
+    shader_name: str
     texture_map: dict[str, Texture]
     properties: list[MaterialProperty]
 
@@ -109,7 +109,8 @@ class MSHReader:
 
     def read_material(self, bs: BinaryReader) -> Material:
         mat_start = bs.tell()
-        template_name = self.get_string(bs.read_uint32())
+        shader_name = self.get_string(bs.read_uint32())
+        shader_name = shader_name.split(":")[-1]
         bs.read_uint32()
         mat_name = bs.read_string(24)
 
@@ -143,7 +144,7 @@ class MSHReader:
             props.append(MaterialProperty(prop_name, unk_0, unk_1))
 
         bs.seek(mat_start + 0x900)
-        return Material(mat_name, template_name, tex_map, props)
+        return Material(mat_name, shader_name, tex_map, props)
 
     def _get_vertex_dtype(self, dtype_index: int) -> npt.DTypeLike:
         match dtype_index:
