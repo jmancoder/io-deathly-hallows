@@ -40,7 +40,7 @@ def _create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     links = group.links
 
     input_node = nodes.new(type="NodeGroupInput")
-    input_node.location = (-1200.0, 0.0)
+    input_node.location = (-1400.0, 0.0)
 
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.location = (-300.0, 0.0)
@@ -48,19 +48,31 @@ def _create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     links.new(input_node.outputs["t_colour_alpha"], bsdf.inputs["Alpha"])
 
     sep_color_node = nodes.new("ShaderNodeSeparateColor")
-    sep_color_node.location = (-900.0, -300.0)
+    sep_color_node.location = (-1200.0, -200.0)
     one_minus_node = nodes.new("ShaderNodeMath")
     one_minus_node.operation = "SUBTRACT"
     one_minus_node.inputs[0].default_value = 1.0
-    one_minus_node.location = (-600.0, -300.0)
+    one_minus_node.location = (-1000.0, -200.0)
     links.new(input_node.outputs["t_spec"], sep_color_node.inputs["Color"])
     links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
     links.new(one_minus_node.outputs["Value"], bsdf.inputs["Roughness"])
 
+    sep_color_node = nodes.new("ShaderNodeSeparateColor")
+    sep_color_node.location = (-1200.0, -400.0)
+    one_minus_node = nodes.new("ShaderNodeMath")
+    one_minus_node.operation = "SUBTRACT"
+    one_minus_node.inputs[0].default_value = 1.0
+    one_minus_node.location = (-1000.0, -400.0)
+    merge_color_node = nodes.new("ShaderNodeCombineColor")
+    merge_color_node.location = (-800.0, -400.0)
     norm_map_node = nodes.new("ShaderNodeNormalMap")
-    norm_map_node.convention = "DIRECTX"
-    norm_map_node.location = (-900.0, -600.0)
-    links.new(input_node.outputs["t_normal"], norm_map_node.inputs["Color"])
+    norm_map_node.location = (-600.0, -400.0)
+    links.new(input_node.outputs["t_normal"], sep_color_node.inputs["Color"])
+    links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
+    links.new(sep_color_node.outputs["Red"], merge_color_node.inputs["Red"])
+    links.new(one_minus_node.outputs["Value"], merge_color_node.inputs["Green"])
+    links.new(sep_color_node.outputs["Blue"], merge_color_node.inputs["Blue"])
+    links.new(merge_color_node.outputs["Color"], norm_map_node.inputs["Color"])
     links.new(norm_map_node.outputs["Normal"], bsdf.inputs["Normal"])
 
     output_node = nodes.new(type="NodeGroupOutput")
