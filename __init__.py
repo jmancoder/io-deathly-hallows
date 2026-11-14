@@ -20,6 +20,14 @@ class IODH_Settings(bpy.types.PropertyGroup):
     )
 
 
+def _create_asset_reader(context: bpy.types.Context) -> AssetReader:
+    settings = context.scene.iodh_settings
+    manifest_path = Path(bpy.path.abspath(settings.manifest_path))
+    with open(manifest_path, "rt") as f:
+        manifest = json.load(f)
+    return AssetReader(manifest_path.parent, manifest)
+
+
 class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
     """Import shapes, materials, and textures from an MSH file and its dependencies."""
 
@@ -34,11 +42,7 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
-        settings = context.scene.iodh_settings
-        with open(settings.manifest_path, "rt") as f:
-            manifest = json.load(f)
-
-        reader = AssetReader(Path(settings.manifest_path).parent, manifest)
+        reader = _create_asset_reader(context)
         shapes = reader.read_msh(Path(self.filepath))
         for shape in shapes:
             asset_importer.import_shape(context, shape, None, None)
@@ -59,11 +63,7 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
-        settings = context.scene.iodh_settings
-        with open(settings.manifest_path, "rt") as f:
-            manifest = json.load(f)
-
-        reader = AssetReader(Path(settings.manifest_path).parent, manifest)
+        reader = _create_asset_reader(context)
         skl_path = Path(self.filepath)
         skeleton = reader.read_skl(skl_path)
         armature_obj = asset_importer.import_skl(context, skeleton)
@@ -75,7 +75,7 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
             for shape in shapes:
                 asset_importer.import_shape(context, shape, armature_obj, bone_names)
         else:
-            logging.error('Failed to locate mesh at "%s"', msh_path)
+            logger.error('Failed to locate mesh at "%s"', msh_path)
         return {"FINISHED"}
 
 
