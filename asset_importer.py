@@ -372,13 +372,13 @@ def import_shape(
     mesh.polygons.foreach_set("loop_start", np.arange(n_triangles, dtype=np.int32) * 3)
 
     # Import UVs
-    for i in range(4):
+    for i in range(3):
         attr_name = f"uv_{i}"
         if attr_name not in shape.vertices.dtype.names:
             continue
         uvs = shape.vertices[attr_name]
         uvs[:, 1] = 1.0 - uvs[:, 1]
-        uvs = uvs[shape.face_indices]
+        uvs = uvs[shape.face_indices].copy()
         uv_layer = mesh.uv_layers.new(name=f"UVMap{i}")
         uv_layer.data.foreach_set("uv", uvs.ravel())
 

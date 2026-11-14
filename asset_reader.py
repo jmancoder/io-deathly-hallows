@@ -263,8 +263,9 @@ class AssetReader:
                     [
                         ("position", "<f4", 3),
                         ("color", "<u1", 4),
-                        ("uv_0", "<f2", 4),
+                        ("uv_0", "<f2", 2),
                         ("uv_1", "<f4", 2),
+                        ("uv_2", "<f4", 2),
                     ]
                 )
             case 10:
@@ -273,9 +274,10 @@ class AssetReader:
                         ("position", "<f4", 3),
                         ("normal", "<f4", 3),
                         ("binormal", "<f4", 3),
-                        ("uv_0", "<f2", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
                         ("color", "<u1", 4),
-                        ("uv_1", "<f4", 2),
+                        ("uv_2", "<f4", 2),
                     ]
                 )
             case 11:
