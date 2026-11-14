@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from mathutils import Matrix
 
 from .binary_reader import BinaryReader
 
@@ -38,11 +39,12 @@ class Material:
 
 
 @dataclass(slots=True)
-class MaterialSlot:
-    unk_int: int
-    start_corner: int
-    corner_count: int
+class Batch:
+    face_start_index: int
+    face_index_count: int
     material_index: int
+    bone_pal_start_idx: int
+    bone_pal_len: int
     flags: int
 
 
@@ -52,8 +54,29 @@ class Shape:
     name: str
     vertices: npt.NDArray
     face_indices: npt.NDArray
-    slots: list[MaterialSlot]
+    batches: list[Batch]
     materials: list[Material]
+    bone_palette: npt.NDArray
+
+
+@dataclass(slots=True)
+class Bone:
+    name: str
+    transform: Matrix
+    inverse_transform: Matrix
+    unk_vec_a: tuple[float, float, float, float]
+    unk_vec_b: tuple[float, float, float, float]
+    parent_index: int
+    sibling_index: int
+    child_index: int
+    self_index: int
+
+
+@dataclass(slots=True)
+class Skeleton:
+    name: str
+    bone_group_id: int
+    bones: list[Bone]
 
 
 class AssetReader:
@@ -98,17 +121,25 @@ class AssetReader:
         data_path = self.get_path(data_id)
         return Texture(tex_id, data_id, tex_path.stem, data_path, width, height, size)
 
-    def read_material_slot(self, bs: BinaryReader) -> MaterialSlot:
-        unk_int = bs.read_int32()
-        start_corner = bs.read_uint32()
-        corner_count = bs.read_uint32()
+    def read_face_batch(self, bs: BinaryReader) -> Batch:
+        bs.read_int32()
+        face_idx_start = bs.read_uint32()
+        face_idx_count = bs.read_uint32()
         material_idx = bs.read_int32()
         bs.read_int32()
         bs.read_int32()
-        bs.read_int32()
-        bs.read_int32()
+        bone_pal_start_idx = bs.read_uint32()
+        bone_pal_len = bs.read_uint32()
         flags = bs.read_uint32()
-        return MaterialSlot(unk_int, start_corner, corner_count, material_idx, flags)
+
+        return Batch(
+            face_idx_start,
+            face_idx_count,
+            material_idx,
+            bone_pal_start_idx,
+            bone_pal_len,
+            flags,
+        )
 
     def read_material(self, bs: BinaryReader) -> Material:
         mat_start = bs.tell()
@@ -324,7 +355,7 @@ class AssetReader:
         bs.read_int32()
         vertex_count = bs.read_uint32()
         face_idx_count = bs.read_uint32()
-        slot_count = bs.read_uint32()
+        batch_count = bs.read_uint32()
         material_count = bs.read_int32()
         vertex_type_id = bs.read_uint32()
         face_type_id = bs.read_uint32()
@@ -343,17 +374,17 @@ class AssetReader:
         bs.read_int32()
         bs.read_int32()
         bs.read_matrix_4x4()
-        slot_group_id = bs.read_uint32()
+        shape_batch_group_id = bs.read_uint32()
         material_group_id = bs.read_uint32()
         material_prop_group_id = bs.read_uint32()
         bs.read_int32()
-        bs.read_int32()
-        bs.read_int32()
+        bone_pal_id = bs.read_uint32()
+        bone_pal_idx_count = bs.read_uint32()
         bs.read_int32()
         bs.read_int32()
         unk_flags = bs.read_uint32()
         unk_id = bs.read_uint32()
-        bs.read_int32()
+        unk_count = bs.read_uint32()
         bs.read_int32()
 
         # Read vertices
@@ -388,11 +419,11 @@ class AssetReader:
         else:
             face_indices = np.array([])
 
-        # Read material slot group
-        slot_group_path = self.get_path(slot_group_id)
-        logger.info('Reading material slot group file "%s"', slot_group_path)
-        bs = self.create_reader(slot_group_path)
-        slots = [self.read_material_slot(bs) for _ in range(slot_count)]
+        # Read shape batch group
+        shape_batch_group_path = self.get_path(shape_batch_group_id)
+        logger.info('Reading shape batch group file "%s"', shape_batch_group_path)
+        bs = self.create_reader(shape_batch_group_path)
+        batches = [self.read_face_batch(bs) for _ in range(batch_count)]
 
         # Read material group
         if material_group_id not in self.asset_pool:
@@ -403,14 +434,31 @@ class AssetReader:
             self.asset_pool[material_group_id] = materials
         else:
             materials = self.asset_pool[material_group_id]
-        return Shape(shape_id, shape_name, vertices, face_indices, slots, materials)
+
+        # Read bone palette indices
+        if bone_pal_idx_count > 0:
+            bone_pal_path = self.get_path(bone_pal_id)
+            logger.info('Reading bone palette file "%s"', bone_pal_path)
+            bone_palette = np.fromfile(bone_pal_path, "<u2", bone_pal_idx_count)
+        else:
+            bone_palette = np.ndarray([])
+
+        return Shape(
+            shape_id,
+            shape_name,
+            vertices,
+            face_indices,
+            batches,
+            materials,
+            bone_palette,
+        )
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
         logger.info('Reading MSH file "%s"', msh_path)
         bs = self.create_reader(msh_path)
 
-        assert bs.read_uint32() == 0
-        assert bs.read_uint32() == 0
+        bs.read_int32()
+        bs.read_int32()
         shape_count = bs.read_uint32()
         shape_table_id = bs.read_uint32()
         node_count = bs.read_uint32()
@@ -432,3 +480,44 @@ class AssetReader:
             else:
                 shape = self.asset_pool[shape_id]
         return shapes
+
+    def read_bone(self, bs: BinaryReader) -> Bone:
+        name = bs.read_string(64)
+        transform_a = bs.read_matrix_4x4()
+        transform_b = bs.read_matrix_4x4()
+        unk_vec_a = bs.read_vec4f()
+        unk_vec_b = bs.read_vec4f()
+        parent_idx = bs.read_int32()
+        sibling_idx = bs.read_int32()
+        child_idx = bs.read_int32()
+        self_idx = bs.read_int32()
+        return Bone(
+            name,
+            transform_a,
+            transform_b,
+            unk_vec_a,
+            unk_vec_b,
+            parent_idx,
+            sibling_idx,
+            child_idx,
+            self_idx,
+        )
+
+    def read_skl(self, skl_path: Path) -> Skeleton:
+        logger.info('Reading SKL file "%s"', skl_path)
+        bs = self.create_reader(skl_path)
+
+        bone_count = bs.read_uint32()
+        bone_group_id = bs.read_uint32()
+        bs.read_int32()
+        unk_id = bs.read_uint32()
+        bs.read_float()
+        bs.read_int32()
+        bs.read_int32()
+        bs.read_int32()
+
+        bone_group_path = self.get_path(bone_group_id)
+        logger.info('Reading bone group file "%s"', bone_group_path)
+        bs = self.create_reader(bone_group_path)
+        bones = [self.read_bone(bs) for _ in range(bone_count)]
+        return Skeleton(skl_path.stem, bone_group_id, bones)

@@ -61,4 +61,4 @@ class BinaryReader(BytesIO):
         return Matrix([self.read_vec4f() for _ in range(4)]).transposed()
 
     def read_string(self, length: int) -> str:
-        return self.read(length).decode()
+        return self.read(length).rstrip(b"\x00").decode()

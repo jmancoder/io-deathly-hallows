@@ -311,17 +311,56 @@ def _decode_normals(hi: npt.NDArray, lo: npt.NDArray) -> npt.NDArray:
     return v * np.column_stack([np.sign(uv), np.sign(hi)])
 
 
-def import_shape(context: bpy.types.Context, shape: asset_reader.Shape) -> None:
+def import_skl(
+    context: bpy.types.Context, skeleton: asset_reader.Skeleton
+) -> bpy.types.Object:
+    armature = bpy.data.armatures.new(str(skeleton.bone_group_id))
+    armature_obj = bpy.data.objects.new(skeleton.name, armature)
+    context.collection.objects.link(armature_obj)
+    context.view_layer.objects.active = armature_obj
+
+    bpy.ops.object.mode_set(mode="EDIT")
+    for bone_data in skeleton.bones:
+        bone = armature.edit_bones.new(bone_data.name)
+        if bone_data.parent_index > -1:
+            bone.parent = armature.edit_bones[bone_data.parent_index]
+        bone.matrix = bone_data.transform
+        bone.length = 0.15
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return armature_obj
+
+
+def _remap_bone_indices(shape: asset_reader.Shape) -> npt.NDArray:
+    original_indices = shape.vertices["indices"]
+    bone_indices = original_indices.copy()
+
+    # Reversed so that when a vertex is shared between batches, the earliest batch wins
+    for batch in reversed(shape.batches):
+        palette_end = batch.bone_pal_start_idx + batch.bone_pal_len
+        palette = shape.bone_palette[batch.bone_pal_start_idx : palette_end]
+
+        face_end = batch.face_start_index + batch.face_index_count
+        batch_vertices = shape.face_indices[batch.face_start_index : face_end]
+
+        bone_indices[batch_vertices] = palette[original_indices[batch_vertices]]
+    return bone_indices
+
+
+def import_shape(
+    context: bpy.types.Context,
+    shape: asset_reader.Shape,
+    armature_obj: bpy.types.Object | None,
+    bone_names: list[str] | None,
+) -> None:
     # Import positions
     mesh = bpy.data.meshes.new(str(shape.file_id))
     mesh.vertices.add(len(shape.vertices))
     mesh.vertices.foreach_set("co", shape.vertices["position"].ravel())
 
     # Import triangles
-    indices = shape.face_indices
-    n_triangles = len(indices) // 3
-    mesh.loops.add(len(indices))
-    mesh.loops.foreach_set("vertex_index", indices)
+    n_triangles = len(shape.face_indices) // 3
+    mesh.loops.add(len(shape.face_indices))
+    mesh.loops.foreach_set("vertex_index", shape.face_indices)
     mesh.polygons.add(n_triangles)
     mesh.polygons.foreach_set("loop_start", np.arange(n_triangles, dtype=np.int32) * 3)
     mesh.polygons.foreach_set("loop_total", np.full(n_triangles, 3, dtype=np.int32))
@@ -355,10 +394,10 @@ def import_shape(context: bpy.types.Context, shape: asset_reader.Shape) -> None:
 
     # Assign materials
     corner_starts = np.array(
-        [slot.start_corner for slot in shape.slots], dtype=np.int64
+        [batch.face_start_index for batch in shape.batches], dtype=np.int64
     )
     material_indices = np.array(
-        [slot.material_index for slot in shape.slots], dtype=np.int32
+        [batch.material_index for batch in shape.batches], dtype=np.int32
     )
     loop_starts = np.empty(len(mesh.polygons), dtype=np.int32)
     mesh.polygons.foreach_get("loop_start", loop_starts)
@@ -376,3 +415,31 @@ def import_shape(context: bpy.types.Context, shape: asset_reader.Shape) -> None:
         mesh_name = name
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
     context.collection.objects.link(mesh_obj)
+
+    # Attach mesh to armature
+    if armature_obj is None:
+        return
+    mesh_obj.parent = armature_obj
+    modifier = mesh_obj.modifiers.new("Armature", "ARMATURE")
+    modifier.object = armature_obj
+
+    # Create and populate vertex groups
+    if bone_names is None:
+        return
+    vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
+
+    if (
+        "indices" not in shape.vertices.dtype.names
+        or "weights" not in shape.vertices.dtype.names
+    ):
+        return
+    bone_indices = _remap_bone_indices(shape)
+    weights = shape.vertices["weights"]
+    for bone_index, group in enumerate(vertex_groups):
+        for slot in range(weights.shape[1]):
+            slot_uses_bone = (bone_indices[:, slot] == bone_index) & (
+                weights[:, slot] > 0
+            )
+            for weight in np.unique(weights[slot_uses_bone, slot]):
+                vertices = np.nonzero(slot_uses_bone & (weights[:, slot] == weight))[0]
+                group.add(vertices.tolist(), weight / 255.0, "ADD")

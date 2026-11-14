@@ -21,6 +21,8 @@ class IODH_Settings(bpy.types.PropertyGroup):
 
 
 class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
+    """Import shapes, materials, and textures from an MSH file and its dependencies."""
+
     bl_idname = "import_scene.iodh_msh"
     bl_label = "Import MSH"
     filename_ext = "MSH"
@@ -39,7 +41,41 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
         reader = AssetReader(Path(settings.manifest_path).parent, manifest)
         shapes = reader.read_msh(Path(self.filepath))
         for shape in shapes:
-            asset_importer.import_shape(context, shape)
+            asset_importer.import_shape(context, shape, None)
+        return {"FINISHED"}
+
+
+class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
+    """Import bones from an SKL file and then import the adjacent MSH file."""
+
+    bl_idname = "import_scene.iodh_skl"
+    bl_label = "Import SKL"
+    filename_ext = "SKL"
+
+    filter_glob: StringProperty(
+        default="*.SKL",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
+
+    def execute(self, context):
+        settings = context.scene.iodh_settings
+        with open(settings.manifest_path, "rt") as f:
+            manifest = json.load(f)
+
+        reader = AssetReader(Path(settings.manifest_path).parent, manifest)
+        skl_path = Path(self.filepath)
+        skeleton = reader.read_skl(skl_path)
+        armature_obj = asset_importer.import_skl(context, skeleton)
+        bone_names = [bone.name for bone in skeleton.bones]
+
+        msh_path = skl_path.parent / f"{skl_path.stem}.MSH"
+        if msh_path.is_file():
+            shapes = reader.read_msh(msh_path)
+            for shape in shapes:
+                asset_importer.import_shape(context, shape, armature_obj, bone_names)
+        else:
+            logging.error("Failed to locate %s", msh_path)
         return {"FINISHED"}
 
 
@@ -55,10 +91,11 @@ class IODH_PT_main(bpy.types.Panel):
         layout = self.layout
         settings = context.scene.iodh_settings
         layout.prop(settings, "manifest_path")
+        layout.operator("import_scene.iodh_skl", icon="IMPORT")
         layout.operator("import_scene.iodh_msh", icon="IMPORT")
 
 
-classes = (IODH_Settings, IODH_OT_import_msh, IODH_PT_main)
+classes = (IODH_Settings, IODH_OT_import_msh, IODH_OT_import_skl, IODH_PT_main)
 
 
 def register():
