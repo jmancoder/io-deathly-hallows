@@ -41,7 +41,7 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
         reader = AssetReader(Path(settings.manifest_path).parent, manifest)
         shapes = reader.read_msh(Path(self.filepath))
         for shape in shapes:
-            asset_importer.import_shape(context, shape, None)
+            asset_importer.import_shape(context, shape, None, None)
         return {"FINISHED"}
 
 
