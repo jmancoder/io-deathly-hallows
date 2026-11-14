@@ -187,6 +187,7 @@ def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
 
     # Create empty material
     material = bpy.data.materials.new(material_data.name)
+    material.use_nodes = True
     nodes = material.node_tree.nodes
     links = material.node_tree.links
     nodes.clear()

@@ -33,7 +33,7 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
 
     bl_idname = "import_scene.iodh_msh"
     bl_label = "Import MSH"
-    filename_ext = "MSH"
+    filename_ext = ".MSH"
 
     filter_glob: StringProperty(
         default="*.MSH",
@@ -54,7 +54,7 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
 
     bl_idname = "import_scene.iodh_skl"
     bl_label = "Import SKL"
-    filename_ext = "SKL"
+    filename_ext = ".SKL"
 
     filter_glob: StringProperty(
         default="*.SKL",
@@ -62,7 +62,7 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
         maxlen=255,
     )
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         reader = _create_asset_reader(context)
         skl_path = Path(self.filepath)
         skeleton = reader.read_skl(skl_path)
@@ -87,12 +87,11 @@ class IODH_PT_main(bpy.types.Panel):
     bl_category = "Deathly Hallows"
     bl_options = {"DEFAULT_CLOSED"}
 
-    def draw(self, context):
-        layout = self.layout
+    def draw(self, context: bpy.types.Context) -> None:
         settings = context.scene.iodh_settings
-        layout.prop(settings, "manifest_path")
-        layout.operator("import_scene.iodh_skl", icon="IMPORT")
-        layout.operator("import_scene.iodh_msh", icon="IMPORT")
+        self.layout.prop(settings, "manifest_path")
+        self.layout.operator("import_scene.iodh_skl", icon="IMPORT")
+        self.layout.operator("import_scene.iodh_msh", icon="IMPORT")
 
 
 classes = (IODH_Settings, IODH_OT_import_msh, IODH_OT_import_skl, IODH_PT_main)
