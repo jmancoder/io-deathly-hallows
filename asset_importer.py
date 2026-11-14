@@ -426,18 +426,14 @@ def import_shape(
     # Create and populate vertex groups
     if bone_names is None:
         return
-    vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
-
-    if (
-        "indices" not in shape.vertices.dtype.names
-        or "weights" not in shape.vertices.dtype.names
-    ):
+    if "indices" not in shape.vertices.dtype.names:
+        return
+    if "weights" not in shape.vertices.dtype.names:
         return
 
     vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
     bone_indices = _remap_bone_indices(shape)
     weights = shape.vertices["weights"]
-
     for slot in range(weights.shape[1]):
         used = np.flatnonzero(weights[:, slot] > 0)
         slot_bones = bone_indices[used, slot]
