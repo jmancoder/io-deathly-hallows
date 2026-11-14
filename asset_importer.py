@@ -9,7 +9,7 @@ from . import asset_reader
 logger = logging.getLogger(__name__)
 
 
-def create_gfx_world_group() -> bpy.types.ShaderNodeTree:
+def _create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     group = bpy.data.node_groups.new(name="gfx_world", type="ShaderNodeTree")
     group.interface.new_socket(
         name="t_colour", in_out="INPUT", socket_type="NodeSocketColor"
@@ -40,36 +40,36 @@ def create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     links = group.links
 
     input_node = nodes.new(type="NodeGroupInput")
-    input_node.location = (-1000.0, 0.0)
+    input_node.location = (-1200.0, 0.0)
 
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.location = (0.0, 0.0)
+    bsdf.location = (-300.0, 0.0)
     links.new(input_node.outputs["t_colour"], bsdf.inputs["Base Color"])
     links.new(input_node.outputs["t_colour_alpha"], bsdf.inputs["Alpha"])
 
     sep_color_node = nodes.new("ShaderNodeSeparateColor")
-    sep_color_node.location = (-650.0, -250.0)
+    sep_color_node.location = (-900.0, -300.0)
     one_minus_node = nodes.new("ShaderNodeMath")
     one_minus_node.operation = "SUBTRACT"
     one_minus_node.inputs[0].default_value = 1.0
-    one_minus_node.location = (-350.0, -250.0)
+    one_minus_node.location = (-600.0, -300.0)
     links.new(input_node.outputs["t_spec"], sep_color_node.inputs["Color"])
     links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
     links.new(one_minus_node.outputs["Value"], bsdf.inputs["Roughness"])
 
     norm_map_node = nodes.new("ShaderNodeNormalMap")
     norm_map_node.convention = "DIRECTX"
-    norm_map_node.location = (-500.0, -500.0)
+    norm_map_node.location = (-900.0, -600.0)
     links.new(input_node.outputs["t_normal"], norm_map_node.inputs["Color"])
     links.new(norm_map_node.outputs["Normal"], bsdf.inputs["Normal"])
 
     output_node = nodes.new(type="NodeGroupOutput")
-    output_node.location = (1000.0, 0.0)
+    output_node.location = (0.0, 0.0)
     links.new(bsdf.outputs["BSDF"], output_node.inputs["BSDF"])
     return group
 
 
-def create_gfx_layered_group() -> bpy.types.ShaderNodeTree:
+def _create_gfx_layered_group() -> bpy.types.ShaderNodeTree:
     group = bpy.data.node_groups.new(name="gfx_layered", type="ShaderNodeTree")
     group.interface.new_socket(
         name="t_colour", in_out="INPUT", socket_type="NodeSocketColor"
@@ -115,60 +115,44 @@ def create_gfx_layered_group() -> bpy.types.ShaderNodeTree:
     links = group.links
 
     input_node = nodes.new(type="NodeGroupInput")
-    input_node.location = (-1000.0, 0.0)
+    input_node.location = (-900.0, 0.0)
 
-    # Add layer 1
-    bsdf_0 = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf_0.location = (0.0, 0.0)
-    links.new(input_node.outputs["t_colour"], bsdf_0.inputs["Base Color"])
-    links.new(input_node.outputs["t_colour_alpha"], bsdf_0.inputs["Alpha"])
+    group_tree = bpy.data.node_groups.get("gfx_world")
+    if group_tree is None:
+        group_tree = _create_gfx_world_group()
 
-    sep_color_node = nodes.new("ShaderNodeSeparateColor")
-    sep_color_node.location = (-650.0, -250.0)
-    one_minus_node = nodes.new("ShaderNodeMath")
-    one_minus_node.operation = "SUBTRACT"
-    one_minus_node.inputs[0].default_value = 1.0
-    one_minus_node.location = (-350.0, -250.0)
-    links.new(input_node.outputs["t_spec"], sep_color_node.inputs["Color"])
-    links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
-    links.new(one_minus_node.outputs["Value"], bsdf_0.inputs["Roughness"])
+    group_node_0 = nodes.new(type="ShaderNodeGroup")
+    group_node_0.node_tree = group_tree
+    group_node_0.location = (-600.0, 0.0)
+    links.new(input_node.outputs["t_colour"], group_node_0.inputs["t_colour"])
+    links.new(
+        input_node.outputs["t_colour_alpha"], group_node_0.inputs["t_colour_alpha"]
+    )
+    links.new(input_node.outputs["t_normal"], group_node_0.inputs["t_normal"])
+    links.new(input_node.outputs["t_spec"], group_node_0.inputs["t_spec"])
+    links.new(input_node.outputs["t_detail"], group_node_0.inputs["t_detail"])
+    links.new(input_node.outputs["t_mask"], group_node_0.inputs["t_mask"])
 
-    norm_map_node = nodes.new("ShaderNodeNormalMap")
-    norm_map_node.convention = "DIRECTX"
-    norm_map_node.location = (-500.0, -500.0)
-    links.new(input_node.outputs["t_normal"], norm_map_node.inputs["Color"])
-    links.new(norm_map_node.outputs["Normal"], bsdf_0.inputs["Normal"])
-
-    # Add layer 2
-    bsdf_1 = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf_1.location = (0.0, -1000.0)
-    links.new(input_node.outputs["t_colour2"], bsdf_1.inputs["Base Color"])
-    links.new(input_node.outputs["t_colour2_alpha"], bsdf_1.inputs["Alpha"])
-
-    sep_color_node = nodes.new("ShaderNodeSeparateColor")
-    sep_color_node.location = (-650.0, -1250.0)
-    one_minus_node = nodes.new("ShaderNodeMath")
-    one_minus_node.operation = "SUBTRACT"
-    one_minus_node.inputs[0].default_value = 1.0
-    one_minus_node.location = (-350.0, -1250.0)
-    links.new(input_node.outputs["t_spec2"], sep_color_node.inputs["Color"])
-    links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
-    links.new(one_minus_node.outputs["Value"], bsdf_1.inputs["Roughness"])
-
-    norm_map_node = nodes.new("ShaderNodeNormalMap")
-    norm_map_node.convention = "DIRECTX"
-    norm_map_node.location = (-500.0, -1500.0)
-    links.new(input_node.outputs["t_normal2"], norm_map_node.inputs["Color"])
-    links.new(norm_map_node.outputs["Normal"], bsdf_1.inputs["Normal"])
+    group_node_1 = nodes.new(type="ShaderNodeGroup")
+    group_node_1.node_tree = group_tree
+    group_node_1.location = (-600.0, -300.0)
+    links.new(input_node.outputs["t_colour2"], group_node_1.inputs["t_colour"])
+    links.new(
+        input_node.outputs["t_colour2_alpha"], group_node_1.inputs["t_colour_alpha"]
+    )
+    links.new(input_node.outputs["t_normal2"], group_node_1.inputs["t_normal"])
+    links.new(input_node.outputs["t_spec2"], group_node_1.inputs["t_spec"])
+    links.new(input_node.outputs["t_detail"], group_node_1.inputs["t_detail"])
+    links.new(input_node.outputs["t_mask"], group_node_1.inputs["t_mask"])
 
     # Mix layers using detail texture
     mix_shader_node = nodes.new("ShaderNodeMixShader")
-    mix_shader_node.location = (500.0, 0.0)
+    mix_shader_node.location = (-300.0, 0.0)
     output_node = nodes.new(type="NodeGroupOutput")
-    output_node.location = (1000.0, 0.0)
+    output_node.location = (0.0, 0.0)
     links.new(input_node.outputs["t_detail"], mix_shader_node.inputs[0])
-    links.new(bsdf_0.outputs["BSDF"], mix_shader_node.inputs[1])
-    links.new(bsdf_1.outputs["BSDF"], mix_shader_node.inputs[2])
+    links.new(group_node_0.outputs["BSDF"], mix_shader_node.inputs[1])
+    links.new(group_node_1.outputs["BSDF"], mix_shader_node.inputs[2])
     links.new(mix_shader_node.outputs[0], output_node.inputs["BSDF"])
     return group
 
@@ -198,15 +182,15 @@ def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
         case "gfx_layered":
             group_tree = bpy.data.node_groups.get("gfx_layered")
             if group_tree is None:
-                group_tree = create_gfx_layered_group()
+                group_tree = _create_gfx_layered_group()
         case "gfx_world":
             group_tree = bpy.data.node_groups.get("gfx_world")
             if group_tree is None:
-                group_tree = create_gfx_world_group()
+                group_tree = _create_gfx_world_group()
         case _:
             group_tree = bpy.data.node_groups.get(material_data.shader_name)
             if group_tree is None:
-                group_tree = create_gfx_world_group()
+                group_tree = _create_gfx_world_group()
                 group_tree.name = material_data.shader_name
 
     # Add group and output nodes
