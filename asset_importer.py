@@ -365,11 +365,12 @@ def import_shape(
 
     # Import triangles
     face_indices = shape.face_indices.astype(np.int32)
-    n_triangles = len(face_indices) // 3
+    tri_count = len(face_indices) // 3
     mesh.loops.add(len(face_indices))
     mesh.loops.foreach_set("vertex_index", face_indices)
-    mesh.polygons.add(n_triangles)
-    mesh.polygons.foreach_set("loop_start", np.arange(n_triangles, dtype=np.int32) * 3)
+    mesh.polygons.add(tri_count)
+    mesh.polygons.foreach_set("loop_start", np.arange(tri_count, dtype=np.int32) * 3)
+    mesh.update(calc_edges=True)
 
     # Import UVs
     for i in range(3):
@@ -399,19 +400,12 @@ def import_shape(
             mesh.materials.append(import_material(mat_data))
 
     # Assign materials
-    corner_starts = np.array(
-        [batch.face_start_index for batch in shape.batches], dtype=np.int64
-    )
-    material_indices = np.array(
-        [batch.material_index for batch in shape.batches], dtype=np.int32
-    )
-    loop_starts = np.empty(len(mesh.polygons), dtype=np.int32)
-    mesh.polygons.foreach_get("loop_start", loop_starts)
-    poly_mat_indices = material_indices[
-        np.searchsorted(corner_starts, loop_starts, side="right") - 1
-    ]
-    mesh.polygons.foreach_set("material_index", poly_mat_indices)
-    mesh.update(calc_edges=True)
+    poly_materials = np.zeros(tri_count, dtype=np.int32)
+    for batch in shape.batches:
+        start = batch.face_start_index // 3
+        end = start + batch.face_index_count // 3
+        poly_materials[start:end] = batch.material_index
+    mesh.polygons.foreach_set("material_index", poly_materials)
 
     # Create mesh object with stored name
     mesh_name = "Mesh"
@@ -439,13 +433,20 @@ def import_shape(
         or "weights" not in shape.vertices.dtype.names
     ):
         return
+
+    vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
     bone_indices = _remap_bone_indices(shape)
     weights = shape.vertices["weights"]
-    for bone_index, group in enumerate(vertex_groups):
-        for slot in range(weights.shape[1]):
-            slot_uses_bone = (bone_indices[:, slot] == bone_index) & (
-                weights[:, slot] > 0
-            )
-            for weight in np.unique(weights[slot_uses_bone, slot]):
-                vertices = np.nonzero(slot_uses_bone & (weights[:, slot] == weight))[0]
-                group.add(vertices.tolist(), weight / 255.0, "ADD")
+
+    for slot in range(weights.shape[1]):
+        used = np.flatnonzero(weights[:, slot] > 0)
+        slot_bones = bone_indices[used, slot]
+        slot_weights = weights[used, slot]
+        for bone_index in np.unique(slot_bones):
+            in_bone = slot_bones == bone_index
+            for weight in np.unique(slot_weights[in_bone]):
+                vertex_groups[bone_index].add(
+                    used[in_bone & (slot_weights == weight)].tolist(),
+                    weight / 255.0,
+                    "ADD",
+                )
