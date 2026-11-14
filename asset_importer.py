@@ -321,13 +321,15 @@ def import_skl(
 
     # Create bones
     bpy.ops.object.mode_set(mode="EDIT")
+    new_bones: list[bpy.types.EditBone] = []
     for bone_data in skeleton.bones:
         bone = armature.edit_bones.new(bone_data.name)
         bone.matrix = bone_data.transform
         bone.length = 0.15
+        new_bones.append(bone)
 
     # Reparent bones
-    for bone, bone_data in zip(armature.edit_bones, skeleton.bones):
+    for bone, bone_data in zip(new_bones, skeleton.bones):
         if bone_data.parent_index > -1:
             bone.parent = armature.edit_bones[bone_data.parent_index]
     bpy.ops.object.mode_set(mode="OBJECT")
