@@ -394,6 +394,11 @@ def import_shape(
             normals = raw_normals
         mesh.normals_split_custom_set_from_vertices(normals)
 
+    # Import vertex colors
+    if "color" in shape.vertices.dtype.names:
+        vertex_color_attr = mesh.color_attributes.new("Color", "BYTE_COLOR", "POINT")
+        vertex_color_attr.data.foreach_set("color", shape.vertices["color"].ravel())
+
     # Import materials
     for mat_data in shape.materials:
         if mat_data.name in bpy.data.materials:
