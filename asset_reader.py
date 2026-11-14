@@ -475,10 +475,10 @@ class AssetReader:
         for shape_id in shape_id_table:
             if shape_id not in self.asset_pool:
                 shape = self.read_shape(shape_id)
-                shapes.append(shape)
                 self.asset_pool[shape_id] = shape
             else:
                 shape = self.asset_pool[shape_id]
+            shapes.append(shape)
         return shapes
 
     def read_bone(self, bs: BinaryReader) -> Bone:

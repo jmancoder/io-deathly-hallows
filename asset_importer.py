@@ -319,13 +319,17 @@ def import_skl(
     context.collection.objects.link(armature_obj)
     context.view_layer.objects.active = armature_obj
 
+    # Create bones
     bpy.ops.object.mode_set(mode="EDIT")
     for bone_data in skeleton.bones:
         bone = armature.edit_bones.new(bone_data.name)
-        if bone_data.parent_index > -1:
-            bone.parent = armature.edit_bones[bone_data.parent_index]
         bone.matrix = bone_data.transform
         bone.length = 0.15
+
+    # Reparent bones
+    for bone, bone_data in zip(armature.edit_bones, skeleton.bones):
+        if bone_data.parent_index > -1:
+            bone.parent = armature.edit_bones[bone_data.parent_index]
     bpy.ops.object.mode_set(mode="OBJECT")
     return armature_obj
 
@@ -358,12 +362,12 @@ def import_shape(
     mesh.vertices.foreach_set("co", shape.vertices["position"].ravel())
 
     # Import triangles
-    n_triangles = len(shape.face_indices) // 3
-    mesh.loops.add(len(shape.face_indices))
-    mesh.loops.foreach_set("vertex_index", shape.face_indices)
+    face_indices = shape.face_indices.astype(np.int32)
+    n_triangles = len(face_indices) // 3
+    mesh.loops.add(len(face_indices))
+    mesh.loops.foreach_set("vertex_index", face_indices)
     mesh.polygons.add(n_triangles)
     mesh.polygons.foreach_set("loop_start", np.arange(n_triangles, dtype=np.int32) * 3)
-    mesh.polygons.foreach_set("loop_total", np.full(n_triangles, 3, dtype=np.int32))
 
     # Import UVs
     for i in range(4):
