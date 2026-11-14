@@ -288,7 +288,7 @@ def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
 
             case _:
                 logger.warning(
-                    "Image %s in material %s is of unimplemented type %s",
+                    'Image "%s" in material "%s" is of unimplemented type "%s"',
                     img.name,
                     material.name,
                     img_type,
@@ -385,7 +385,7 @@ def import_shape(
     # Import normals
     if "normal" in shape.vertices.dtype.names:
         raw_normals = shape.vertices["normal"]
-        if raw_normals.itemsize == 1:
+        if raw_normals.dtype == np.uint8:
             normals = _decode_normals(raw_normals[:, 2], raw_normals[:, 3])
         else:
             normals = raw_normals

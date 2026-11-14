@@ -119,6 +119,7 @@ class AssetReader:
         bs.read_int32()
         data_id = bs.read_uint32()
         data_path = self.get_path(data_id)
+        logger.info('Caching TEX data path "%s"', data_path)
         return Texture(tex_id, data_id, tex_path.stem, data_path, width, height, size)
 
     def read_face_batch(self, bs: BinaryReader) -> Batch:
@@ -398,8 +399,10 @@ class AssetReader:
                     f"Stored vertex stride is {stride}, "
                     f"but NumPy stride is {vertex_dtype.itemsize}"
                 )
+            vertex_buf_path = self.get_path(vertex_buf_id)
+            logger.info('Reading vertex buffer file "%s"', vertex_buf_path)
             vertices = np.fromfile(
-                self.get_path(vertex_buf_id),
+                vertex_buf_path,
                 vertex_dtype,
                 vertex_count,
             )
@@ -408,14 +411,14 @@ class AssetReader:
 
         # Read face indices
         if face_idx_count > 0:
+            face_buf_path = self.get_path(face_buf_id)
+            logger.info('Reading face index buffer file "%s"', face_buf_path)
             if face_type_id == 0:
                 face_indices = np.fromfile(
                     self.get_path(face_buf_id), "<u2", face_idx_count
                 )
             elif face_type_id == 1:
-                face_indices = np.fromfile(
-                    self.get_path(face_buf_id), "<u4", face_idx_count
-                )
+                face_indices = np.fromfile(face_buf_path, "<u4", face_idx_count)
             else:
                 raise NotImplementedError(f"Unimplemented face type {face_type_id}")
         else:

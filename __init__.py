@@ -75,7 +75,7 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
             for shape in shapes:
                 asset_importer.import_shape(context, shape, armature_obj, bone_names)
         else:
-            logging.error("Failed to locate %s", msh_path)
+            logging.error('Failed to locate mesh at "%s"', msh_path)
         return {"FINISHED"}
 
 
