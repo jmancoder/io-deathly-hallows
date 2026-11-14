@@ -357,6 +357,8 @@ def import_shape(
     bone_names: list[str] | None,
 ) -> None:
     # Import positions
+    if len(shape.vertices) == 0:
+        return
     mesh = bpy.data.meshes.new(str(shape.file_id))
     mesh.vertices.add(len(shape.vertices))
     mesh.vertices.foreach_set("co", shape.vertices["position"].ravel())

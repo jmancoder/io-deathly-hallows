@@ -402,7 +402,7 @@ class AssetReader:
                 vertex_count,
             )
         else:
-            vertices = np.array([])
+            vertices = np.empty(0)
 
         # Read face indices
         if face_idx_count > 0:
@@ -417,7 +417,7 @@ class AssetReader:
             else:
                 raise NotImplementedError(f"Unimplemented face type {face_type_id}")
         else:
-            face_indices = np.array([])
+            face_indices = np.empty(0, "<u2")
 
         # Read shape batch group
         shape_batch_group_path = self.get_path(shape_batch_group_id)
@@ -441,7 +441,7 @@ class AssetReader:
             logger.info('Reading bone palette file "%s"', bone_pal_path)
             bone_palette = np.fromfile(bone_pal_path, "<u2", bone_pal_idx_count)
         else:
-            bone_palette = np.ndarray([])
+            bone_palette = np.empty(0, "<u2")
 
         return Shape(
             shape_id,
