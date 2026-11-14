@@ -99,14 +99,10 @@ class AssetReader:
             path = name
         return self.root_path / path
 
-    def create_reader(self, path: Path) -> BinaryReader:
-        with open(path, "rb") as f:
-            return BinaryReader(f.read())
-
     def read_tex(self, tex_id: int) -> Texture:
         tex_path = self.get_path(tex_id)
         logger.info('Reading TEX file "%s"', tex_path)
-        bs = self.create_reader(tex_path)
+        bs = BinaryReader(tex_path.read_bytes())
 
         bs.read_int32()
         bs.read_int32()
@@ -339,7 +335,7 @@ class AssetReader:
     def read_shape(self, shape_id: int) -> Shape:
         shape_path = self.get_path(shape_id)
         logger.info('Reading shape file "%s"', shape_path)
-        bs = self.create_reader(shape_path)
+        bs = BinaryReader(shape_path.read_bytes())
 
         shape_name = self.get_string(bs.read_uint32())
         bs.read_vec3f()
@@ -414,9 +410,7 @@ class AssetReader:
             face_buf_path = self.get_path(face_buf_id)
             logger.info('Reading face index buffer file "%s"', face_buf_path)
             if face_type_id == 0:
-                face_indices = np.fromfile(
-                    self.get_path(face_buf_id), "<u2", face_idx_count
-                )
+                face_indices = np.fromfile(face_buf_path, "<u2", face_idx_count)
             elif face_type_id == 1:
                 face_indices = np.fromfile(face_buf_path, "<u4", face_idx_count)
             else:
@@ -427,14 +421,14 @@ class AssetReader:
         # Read shape batch group
         shape_batch_group_path = self.get_path(shape_batch_group_id)
         logger.info('Reading shape batch group file "%s"', shape_batch_group_path)
-        bs = self.create_reader(shape_batch_group_path)
+        bs = BinaryReader(shape_batch_group_path.read_bytes())
         batches = [self.read_face_batch(bs) for _ in range(batch_count)]
 
         # Read material group
         if material_group_id not in self.asset_pool:
             material_group_path = self.get_path(material_group_id)
             logger.info('Reading material group file "%s"', material_group_path)
-            bs = self.create_reader(material_group_path)
+            bs = BinaryReader(material_group_path.read_bytes())
             materials = [self.read_material(bs) for _ in range(material_count)]
             self.asset_pool[material_group_id] = materials
         else:
@@ -460,7 +454,7 @@ class AssetReader:
 
     def read_msh(self, msh_path: Path) -> list[Shape]:
         logger.info('Reading MSH file "%s"', msh_path)
-        bs = self.create_reader(msh_path)
+        bs = BinaryReader(msh_path.read_bytes())
 
         bs.read_int32()
         bs.read_int32()
@@ -472,7 +466,7 @@ class AssetReader:
         # Read shape ID table
         shape_table_path = self.get_path(shape_table_id)
         logger.info('Reading shape table file "%s"', shape_table_path)
-        bs = self.create_reader(shape_table_path)
+        bs = BinaryReader(shape_table_path.read_bytes())
         shape_id_table = [bs.read_uint32() for _ in range(shape_count)]
 
         # Read shapes
@@ -510,7 +504,7 @@ class AssetReader:
 
     def read_skl(self, skl_path: Path) -> Skeleton:
         logger.info('Reading SKL file "%s"', skl_path)
-        bs = self.create_reader(skl_path)
+        bs = BinaryReader(skl_path.read_bytes())
 
         bone_count = bs.read_uint32()
         bone_group_id = bs.read_uint32()
@@ -523,6 +517,6 @@ class AssetReader:
 
         bone_group_path = self.get_path(bone_group_id)
         logger.info('Reading bone group file "%s"', bone_group_path)
-        bs = self.create_reader(bone_group_path)
+        bs = BinaryReader(bone_group_path.read_bytes())
         bones = [self.read_bone(bs) for _ in range(bone_count)]
         return Skeleton(skl_path.stem, bone_group_id, bones)
