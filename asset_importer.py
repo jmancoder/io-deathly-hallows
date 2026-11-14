@@ -376,9 +376,9 @@ def import_shape(
         attr_name = f"uv_{i}"
         if attr_name not in shape.vertices.dtype.names:
             continue
-        uvs = shape.vertices[attr_name]
+        uvs = shape.vertices[attr_name][:, :2].astype(np.float32)
         uvs[:, 1] = 1.0 - uvs[:, 1]
-        uvs = uvs[shape.face_indices].copy()
+        uvs = uvs[shape.face_indices]
         uv_layer = mesh.uv_layers.new(name=f"UVMap{i}")
         uv_layer.data.foreach_set("uv", uvs.ravel())
 
