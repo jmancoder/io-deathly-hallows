@@ -9,6 +9,14 @@ from . import asset_reader
 logger = logging.getLogger(__name__)
 
 
+def import_tex(tex_data: asset_reader.Texture) -> bpy.types.Image:
+    img = bpy.data.images.get(tex_data.name)
+    if img is None:
+        img = bpy.data.images.load(str(tex_data.data_path))
+        img.name = tex_data.name
+    return img
+
+
 def _create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     group = bpy.data.node_groups.new(name="gfx_world", type="ShaderNodeTree")
     group.interface.new_socket(
@@ -173,10 +181,7 @@ def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
     # Import images
     img_map: dict[str, bpy.types.Image] = {}
     for tex_type, tex_data in material_data.texture_map.items():
-        img = bpy.data.images.get(tex_data.name)
-        if img is None:
-            img = bpy.data.images.load(str(tex_data.data_path))
-            img.name = tex_data.name
+        img = import_tex(tex_data)
         category, prop_type = tex_type.split(":")
         if category == "sp":
             img_map[prop_type] = img

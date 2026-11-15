@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class Texture:
-    file_id: int
     data_id: int
     name: str
     data_path: Path
@@ -99,8 +98,7 @@ class AssetReader:
             path = name
         return self.root_path / path
 
-    def read_tex(self, tex_id: int) -> Texture:
-        tex_path = self.get_path(tex_id)
+    def read_tex(self, tex_path: Path) -> Texture:
         logger.info('Reading TEX file "%s"', tex_path)
         bs = BinaryReader(tex_path.read_bytes())
 
@@ -116,7 +114,7 @@ class AssetReader:
         data_id = bs.read_uint32()
         data_path = self.get_path(data_id)
         logger.info('Caching TEX data path "%s"', data_path)
-        return Texture(tex_id, data_id, tex_path.stem, data_path, width, height, size)
+        return Texture(data_id, tex_path.stem, data_path, width, height, size)
 
     def read_face_batch(self, bs: BinaryReader) -> Batch:
         bs.read_int32()
@@ -152,7 +150,8 @@ class AssetReader:
             tex_type = self.get_string(bs.read_uint32())
             tex_id = bs.read_uint32()
             if tex_id not in self.asset_pool:
-                texture = self.read_tex(tex_id)
+                tex_path = self.get_path(tex_id)
+                texture = self.read_tex(tex_path)
                 self.asset_pool[tex_id] = texture
             else:
                 texture = self.asset_pool[tex_id]

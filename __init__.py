@@ -79,6 +79,26 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
         return {"FINISHED"}
 
 
+class IODH_OT_import_tex(bpy.types.Operator, ImportHelper):
+    """Import a TEX file as a Blender image."""
+
+    bl_idname = "import_scene.iodh_tex"
+    bl_label = "Import TEX"
+    filename_ext = ".TEX"
+
+    filter_glob: StringProperty(
+        default="*.TEX",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        reader = _create_asset_reader(context)
+        tex_data = reader.read_tex(Path(self.filepath))
+        asset_importer.import_tex(tex_data)
+        return {"FINISHED"}
+
+
 class IODH_PT_main(bpy.types.Panel):
     bl_idname = "IODH_PT_main"
     bl_label = "Deathly Hallows IO"
@@ -92,9 +112,16 @@ class IODH_PT_main(bpy.types.Panel):
         self.layout.prop(settings, "manifest_path")
         self.layout.operator("import_scene.iodh_skl", icon="IMPORT")
         self.layout.operator("import_scene.iodh_msh", icon="IMPORT")
+        self.layout.operator("import_scene.iodh_tex", icon="IMPORT")
 
 
-classes = (IODH_Settings, IODH_OT_import_msh, IODH_OT_import_skl, IODH_PT_main)
+classes = (
+    IODH_Settings,
+    IODH_OT_import_msh,
+    IODH_OT_import_skl,
+    IODH_OT_import_tex,
+    IODH_PT_main,
+)
 
 
 def register():
