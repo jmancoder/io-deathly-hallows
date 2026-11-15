@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import bpy
-from bpy.props import StringProperty, PointerProperty
+from bpy.props import CollectionProperty, StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
 
 from .asset_reader import AssetReader
@@ -40,12 +40,22 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
         options={"HIDDEN"},
         maxlen=255,
     )
+    directory: StringProperty(
+        subtype="DIR_PATH",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
     def execute(self, context):
         reader = _create_asset_reader(context)
-        shapes = reader.read_msh(Path(self.filepath))
-        for shape in shapes:
-            asset_importer.import_shape(context, shape, None, None)
+        for file_elem in self.files:
+            msh_path = Path(self.directory) / str(file_elem.name)
+            shapes = reader.read_msh(msh_path)
+            for shape in shapes:
+                asset_importer.import_shape(context, shape, None, None)
         return {"FINISHED"}
 
 
@@ -61,21 +71,32 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
         options={"HIDDEN"},
         maxlen=255,
     )
+    directory: StringProperty(
+        subtype="DIR_PATH",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         reader = _create_asset_reader(context)
-        skl_path = Path(self.filepath)
-        skeleton = reader.read_skl(skl_path)
-        armature_obj = asset_importer.import_skl(context, skeleton)
-        bone_names = [bone.name for bone in skeleton.bones]
+        for file_elem in self.files:
+            skl_path = Path(self.directory) / str(file_elem.name)
+            skeleton = reader.read_skl(skl_path)
+            armature_obj = asset_importer.import_skl(context, skeleton)
+            bone_names = [bone.name for bone in skeleton.bones]
 
-        msh_path = skl_path.parent / f"{skl_path.stem}.MSH"
-        if msh_path.is_file():
-            shapes = reader.read_msh(msh_path)
-            for shape in shapes:
-                asset_importer.import_shape(context, shape, armature_obj, bone_names)
-        else:
-            logger.error('Failed to locate mesh at "%s"', msh_path)
+            msh_path = skl_path.with_suffix(".MSH")
+            if msh_path.is_file():
+                shapes = reader.read_msh(msh_path)
+                for shape in shapes:
+                    asset_importer.import_shape(
+                        context, shape, armature_obj, bone_names
+                    )
+            else:
+                logger.error('Failed to locate mesh at "%s"', msh_path)
         return {"FINISHED"}
 
 
@@ -91,11 +112,22 @@ class IODH_OT_import_tex(bpy.types.Operator, ImportHelper):
         options={"HIDDEN"},
         maxlen=255,
     )
+    directory: StringProperty(
+        subtype="DIR_PATH",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         reader = _create_asset_reader(context)
-        tex_data = reader.read_tex(Path(self.filepath))
-        asset_importer.import_tex(tex_data)
+        for file_elem in self.files:
+            tex_path = Path(self.directory) / str(file_elem.name)
+            tex_data = reader.read_tex(tex_path)
+            img = asset_importer.import_tex(tex_data)
+            img.use_fake_user = True
         return {"FINISHED"}
 
 
