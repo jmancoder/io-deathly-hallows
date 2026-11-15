@@ -212,88 +212,43 @@ def import_material(material_data: asset_reader.Material) -> bpy.types.Material:
     output_node = nodes.new("ShaderNodeOutputMaterial")
     links.new(group_node.outputs["BSDF"], output_node.inputs["Surface"])
 
-    # Add image and UV nodes
     x_off = -900.0
     y_off = 0.0
     for img_type, img in img_map.items():
+        img_node = nodes.new("ShaderNodeTexImage")
+        img_node.image = img
+        img_node.location = (x_off, y_off)
+
         match img_type:
             case "t_colour":
                 img.colorspace_settings.name = "sRGB"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_colour"])
-                links.new(
-                    img_node.outputs["Alpha"], group_node.inputs["t_colour_alpha"]
-                )
-
             case "t_normal":
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_normal"])
-
             case "t_spec":
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_spec"])
-
             case "t_colour2":
                 img.colorspace_settings.name = "sRGB"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_colour2"])
-                links.new(
-                    img_node.outputs["Alpha"], group_node.inputs["t_colour2_alpha"]
-                )
-
             case "t_normal2":
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_normal2"])
-
             case "t_spec2":
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_spec2"])
-
             case "t_detail":
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
-                links.new(img_node.outputs["Color"], group_node.inputs["t_detail"])
-
             case "t_mask":
+                img.colorspace_settings.name = "Non-Color"
                 uv_node = nodes.new("ShaderNodeUVMap")
                 uv_node.uv_map = "UVMap1"
                 uv_node.location = (x_off - 300.0, y_off)
-                img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
                 links.new(uv_node.outputs["UV"], img_node.inputs["Vector"])
-                links.new(img_node.outputs["Color"], group_node.inputs["t_mask"])
-
             case _:
-                logger.warning(
-                    'Image "%s" in material "%s" is of unimplemented type "%s"',
-                    img.name,
-                    material.name,
-                    img_type,
-                )
                 img.colorspace_settings.name = "Non-Color"
-                img_node = nodes.new("ShaderNodeTexImage")
-                img_node.image = img
-                img_node.location = (x_off, y_off)
+
+        color_input = group_node.inputs.get(img_type)
+        if color_input is not None:
+            links.new(img_node.outputs["Color"], color_input)
+        alpha_input = group_node.inputs.get(f"{img_type}_alpha")
+        if alpha_input is not None:
+            links.new(img_node.outputs["Alpha"], alpha_input)
         y_off -= 300.0
     return material
 
