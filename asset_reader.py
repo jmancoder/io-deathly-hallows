@@ -151,7 +151,15 @@ class AssetReader:
             tex_id = bs.read_uint32()
             if tex_id not in self.asset_pool:
                 tex_path = self.get_path(tex_id)
-                texture = self.read_tex(tex_path)
+                try:
+                    texture = self.read_tex(tex_path)
+                except:
+                    logger.exception(
+                        'Failed to load TEX file at "%s" for material "%s"',
+                        tex_path,
+                        mat_name,
+                    )
+                    texture = self.asset_pool[0]  # ID 0 is always white.tga
                 self.asset_pool[tex_id] = texture
             else:
                 texture = self.asset_pool[tex_id]
