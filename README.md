@@ -5,9 +5,8 @@ A Blender extension for importing meshes from Harry Potter and the Deathly Hallo
 1. Extract a .bin.gz archive using [this](https://github.com/jmancoder/deathly-hallows-extractor) script.
 2. Open Blender and press N to expand the sidebar.
 3. Open the "Deathly Hallows" tab and expand "Deathly Hallows IO".
-4. Click the folder icon beside "Manifest Path" and select manifest.json from the extracted files.
-5. To import a level or prop mesh, click "Import MSH" and select an MSH file.
-To import a character mesh, click "Import SKL" and select an SKL file.
+4. Click the folder icon beside "Manifest Path" and select the exported manifest.json file.
+5. To import a level or prop mesh, click "Import MSH". To import a character mesh, click "Import SKL". To import an individual texture, click "Import TEX".
 6. Optionally select all objects and rotate them 90 degrees on the x-axis.
 
 ## TODO:
