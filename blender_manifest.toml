@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "io_deathly_hallows"
-version = "0.3.0"
+version = "0.3.1"
 name = "Import-Export Deathly Hallows"
 tagline = "Import/export assets from Harry Potter and the Deathly Hallows"
 maintainer = "jmancoder"
