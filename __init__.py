@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import bpy
-from bpy.props import CollectionProperty, StringProperty, PointerProperty
+from bpy.props import CollectionProperty, EnumProperty, StringProperty, PointerProperty
 from bpy_extras.io_utils import ImportHelper
 
 from .asset_reader import AssetReader
@@ -18,6 +18,23 @@ class IODH_Settings(bpy.types.PropertyGroup):
         description="Path to the manifest.json file in the extracted .bin.gz archive",
         subtype="FILE_PATH",
     )
+    source_game: EnumProperty(
+        name="Game",
+        description="The game you are importing assets from",
+        items=[
+            (
+                "DH1",
+                "Deathly Hallows - Part 1",
+                "Harry Potter and the Deathly Hallows - Part 1",
+            ),
+            (
+                "DH2",
+                "Deathly Hallows - Part 2",
+                "Harry Potter and the Deathly Hallows - Part 2",
+            ),
+        ],
+        default="DH1",
+    )
 
 
 def _create_asset_reader(context: bpy.types.Context) -> AssetReader:
@@ -25,7 +42,7 @@ def _create_asset_reader(context: bpy.types.Context) -> AssetReader:
     manifest_path = Path(bpy.path.abspath(settings.manifest_path))
     with open(manifest_path, "rt") as f:
         manifest = json.load(f)
-    return AssetReader(manifest_path.parent, manifest)
+    return AssetReader(manifest_path.parent, manifest, settings.source_game)
 
 
 class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
@@ -142,6 +159,7 @@ class IODH_PT_main(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         settings = context.scene.iodh_settings
         self.layout.prop(settings, "manifest_path")
+        self.layout.prop(settings, "source_game")
         self.layout.operator("import_scene.iodh_skl", icon="IMPORT")
         self.layout.operator("import_scene.iodh_msh", icon="IMPORT")
         self.layout.operator("import_scene.iodh_tex", icon="IMPORT")

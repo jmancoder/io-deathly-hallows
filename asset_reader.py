@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class Texture:
     data_id: int
     name: str
-    data_path: Path
+    data_path: Path | None
     width: int
     height: int
     size: int
@@ -79,10 +79,14 @@ class Skeleton:
 
 
 class AssetReader:
-    def __init__(self, root_path: Path, manifest: dict) -> None:
+    def __init__(
+        self, root_path: Path, manifest: dict, source_game: Literal["DH1", "DH2"]
+    ) -> None:
         self.root_path = root_path
         self.archive_name = root_path.name
+
         self.manifest = manifest
+        self.source_game: Literal["DH1", "DH2"] = source_game
         self.asset_pool: dict[int, Any] = {}
 
     def get_string(self, string_id: int) -> str:
@@ -159,7 +163,7 @@ class AssetReader:
                         tex_path,
                         mat_name,
                     )
-                    texture = self.asset_pool[0]  # ID 0 is always white.tga
+                    texture = Texture(tex_id, tex_path.stem, None, 1, 1, 0)
                 self.asset_pool[tex_id] = texture
             else:
                 texture = self.asset_pool[tex_id]
@@ -184,7 +188,7 @@ class AssetReader:
         bs.seek(mat_start + 0x900)
         return Material(mat_name, shader_name, tex_map, props)
 
-    def _get_vertex_dtype(self, dtype_index: int) -> npt.DTypeLike:
+    def _get_vertex_dtype_dh1(self, dtype_index: int) -> npt.DTypeLike:
         match dtype_index:
             case 0:
                 return np.dtype(
@@ -339,26 +343,53 @@ class AssetReader:
             case _:
                 raise ValueError(f"Unknown vertex type {dtype_index}")
 
+    def _get_vertex_dtype_dh2(self, dtype_index: int) -> npt.DTypeLike:
+        match dtype_index:
+            case 0:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 1:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 9:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("uv_1", "<f2", 2),
+                        ("uv_2", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case _:
+                raise ValueError(f"Unknown vertex type {dtype_index}")
+
     def read_shape(self, shape_id: int) -> Shape:
         shape_path = self.get_path(shape_id)
         logger.info('Reading shape file "%s"', shape_path)
         bs = BinaryReader(shape_path.read_bytes())
 
         shape_name = self.get_string(bs.read_uint32())
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
-        bs.read_vec3f()
-        bs.read_int32()
+        for _ in range(7):
+            bs.read_vec3f()
+            bs.read_int32()
         vertex_count = bs.read_uint32()
         face_idx_count = bs.read_uint32()
         batch_count = bs.read_uint32()
@@ -366,6 +397,11 @@ class AssetReader:
         vertex_type_id = bs.read_uint32()
         face_type_id = bs.read_uint32()
         bs.read_int32()
+        if self.source_game == "DH2":
+            bs.read_int32()
+            bs.read_int32()
+            bs.read_int32()
+            bs.read_int32()
         vertex_buf_id = bs.read_uint32()
         vertex_buf_size = bs.read_uint32()
         bs.read_int32()
@@ -377,25 +413,30 @@ class AssetReader:
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
-        bs.read_int32()
-        bs.read_int32()
         bs.read_matrix_4x4()
+        bs.read_int32()
         shape_batch_group_id = bs.read_uint32()
         material_group_id = bs.read_uint32()
         material_prop_group_id = bs.read_uint32()
         bs.read_int32()
         bone_pal_id = bs.read_uint32()
         bone_pal_idx_count = bs.read_uint32()
+        if self.source_game == "DH2":
+            bs.read_int32()
+            bs.read_int32()
+            bs.read_int32()
         bs.read_int32()
         bs.read_int32()
-        unk_flags = bs.read_uint32()
+        bs.read_uint32()
         unk_id = bs.read_uint32()
         unk_count = bs.read_uint32()
-        bs.read_int32()
 
         # Read vertices
         if vertex_count > 0:
-            vertex_dtype = self._get_vertex_dtype(vertex_type_id)
+            if self.source_game == "DH1":
+                vertex_dtype = self._get_vertex_dtype_dh1(vertex_type_id)
+            else:
+                vertex_dtype = self._get_vertex_dtype_dh2(vertex_type_id)
             stride = vertex_buf_size // vertex_count
             if stride != vertex_dtype.itemsize:
                 raise ValueError(
@@ -416,9 +457,10 @@ class AssetReader:
         if face_idx_count > 0:
             face_buf_path = self.get_path(face_buf_id)
             logger.info('Reading face index buffer file "%s"', face_buf_path)
-            if face_type_id == 0:
+            face_idx_stride = face_buf_size // face_idx_count
+            if face_idx_stride == 2:
                 face_indices = np.fromfile(face_buf_path, "<u2", face_idx_count)
-            elif face_type_id == 1:
+            elif face_idx_stride == 4:
                 face_indices = np.fromfile(face_buf_path, "<u4", face_idx_count)
             else:
                 raise NotImplementedError(f"Unimplemented face type {face_type_id}")
@@ -488,11 +530,14 @@ class AssetReader:
         return shapes
 
     def read_bone(self, bs: BinaryReader) -> Bone:
-        name = bs.read_string(64)
+        if self.source_game == "DH1":
+            name = bs.read_string(64)
         transform_a = bs.read_matrix_4x4()
         transform_b = bs.read_matrix_4x4()
         unk_vec_a = bs.read_vec4f()
         unk_vec_b = bs.read_vec4f()
+        if self.source_game == "DH2":
+            name = bs.read_string(64)
         parent_idx = bs.read_int32()
         sibling_idx = bs.read_int32()
         child_idx = bs.read_int32()

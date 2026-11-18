@@ -12,8 +12,13 @@ logger = logging.getLogger(__name__)
 def import_tex(tex_data: asset_reader.Texture) -> bpy.types.Image:
     img = bpy.data.images.get(tex_data.name)
     if img is None:
-        img = bpy.data.images.load(str(tex_data.data_path))
-        img.name = tex_data.name
+        if tex_data.data_path is None:
+            # Create white placeholder image
+            img = bpy.data.images.new(tex_data.name, 1, 1, alpha=True)
+            img.generated_color = [1.0, 1.0, 1.0, 1.0]
+        else:
+            img = bpy.data.images.load(str(tex_data.data_path))
+            img.name = tex_data.name
     return img
 
 
