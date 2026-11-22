@@ -67,7 +67,7 @@ def _create_gfx_world_group() -> bpy.types.ShaderNodeTree:
     one_minus_node.inputs[0].default_value = 1.0
     one_minus_node.location = (-1000.0, -200.0)
     links.new(input_node.outputs["t_spec"], sep_color_node.inputs["Color"])
-    links.new(sep_color_node.outputs["Green"], one_minus_node.inputs[1])
+    links.new(sep_color_node.outputs["Red"], one_minus_node.inputs[1])
     links.new(one_minus_node.outputs["Value"], bsdf.inputs["Roughness"])
 
     sep_color_node = nodes.new("ShaderNodeSeparateColor")
