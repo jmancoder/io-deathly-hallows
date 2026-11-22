@@ -13,20 +13,9 @@ logger = logging.getLogger(__package__)
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
-    manifest_path: StringProperty(
-        name="Manifest Path",
-        description="Path to the manifest.json file in the extracted .bin.gz archive ",
-        subtype="FILE_PATH",
-    )
-    delta_manifest_path: StringProperty(
-        name="Delta Manifest Path",
-        description="Optional path to the manifest.json"
-        "file in the extracted delta-global.bin.gz archive",
-        subtype="FILE_PATH",
-    )
     source_game: EnumProperty(
         name="Game",
-        description="The game you are importing assets from",
+        description="The title of the game you are importing from",
         items=[
             (
                 "DH1",
@@ -40,6 +29,17 @@ class IODH_Settings(bpy.types.PropertyGroup):
             ),
         ],
         default="DH1",
+    )
+    manifest_path: StringProperty(
+        name="Manifest Path",
+        description="A path to the manifest.json file in the extracted .bin.gz archive",
+        subtype="FILE_PATH",
+    )
+    delta_manifest_path: StringProperty(
+        name="Delta Manifest Path",
+        description="An optional path to the manifest.json "
+        "file in the extracted delta-global.bin.gz archive",
+        subtype="FILE_PATH",
     )
 
 
@@ -66,39 +66,8 @@ def _create_asset_reader(context: bpy.types.Context) -> AssetReader:
     )
 
 
-class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
-    """Import shapes, materials, and textures from an MSH file and its dependencies."""
-
-    bl_idname = "import_scene.iodh_msh"
-    bl_label = "Import MSH"
-    filename_ext = ".MSH"
-
-    filter_glob: StringProperty(
-        default="*.MSH",
-        options={"HIDDEN"},
-        maxlen=255,
-    )
-    directory: StringProperty(
-        subtype="DIR_PATH",
-        options={"SKIP_SAVE", "HIDDEN"},
-    )
-    files: CollectionProperty(
-        type=bpy.types.OperatorFileListElement,
-        options={"SKIP_SAVE", "HIDDEN"},
-    )
-
-    def execute(self, context: bpy.types.Context) -> set[str]:
-        reader = _create_asset_reader(context)
-        for file_elem in self.files:
-            msh_path = Path(self.directory) / str(file_elem.name)
-            shapes = reader.read_msh(msh_path)
-            for shape in shapes:
-                asset_importer.import_shape(context, shape, None, None)
-        return {"FINISHED"}
-
-
 class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
-    """Import bones from an SKL file and then import the adjacent MSH file."""
+    """Import bones from an SKL file, then import the adjacent MSH file"""
 
     bl_idname = "import_scene.iodh_skl"
     bl_label = "Import SKL"
@@ -138,8 +107,39 @@ class IODH_OT_import_skl(bpy.types.Operator, ImportHelper):
         return {"FINISHED"}
 
 
+class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
+    """Import shapes, materials, and textures from an MSH file and its dependencies"""
+
+    bl_idname = "import_scene.iodh_msh"
+    bl_label = "Import MSH"
+    filename_ext = ".MSH"
+
+    filter_glob: StringProperty(
+        default="*.MSH",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
+    directory: StringProperty(
+        subtype="DIR_PATH",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        reader = _create_asset_reader(context)
+        for file_elem in self.files:
+            msh_path = Path(self.directory) / str(file_elem.name)
+            shapes = reader.read_msh(msh_path)
+            for shape in shapes:
+                asset_importer.import_shape(context, shape, None, None)
+        return {"FINISHED"}
+
+
 class IODH_OT_import_tex(bpy.types.Operator, ImportHelper):
-    """Import a TEX file as a Blender image."""
+    """Import a TEX file as a Blender image"""
 
     bl_idname = "import_scene.iodh_tex"
     bl_label = "Import TEX"
@@ -175,16 +175,24 @@ class IODH_PT_main(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Deathly Hallows"
-    bl_options = {"DEFAULT_CLOSED"}
 
     def draw(self, context: bpy.types.Context) -> None:
         settings = context.scene.iodh_settings
-        self.layout.prop(settings, "manifest_path")
-        self.layout.prop(settings, "delta_manifest_path")
-        self.layout.prop(settings, "source_game")
-        self.layout.operator("import_scene.iodh_skl", icon="IMPORT")
-        self.layout.operator("import_scene.iodh_msh", icon="IMPORT")
-        self.layout.operator("import_scene.iodh_tex", icon="IMPORT")
+        layout = self.layout
+
+        layout.prop(settings, "source_game")
+
+        row = layout.split(factor=0.35, align=True)
+        row.label(text="Manifest Path")
+        row.prop(settings, "manifest_path", text="")
+
+        row = layout.split(factor=0.5, align=True)
+        row.label(text="Delta Manifest Path")
+        row.prop(settings, "delta_manifest_path", text="")
+
+        layout.operator("import_scene.iodh_skl", icon="IMPORT")
+        layout.operator("import_scene.iodh_msh", icon="IMPORT")
+        layout.operator("import_scene.iodh_tex", icon="IMPORT")
 
 
 classes = (
