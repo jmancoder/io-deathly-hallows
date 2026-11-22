@@ -52,6 +52,7 @@ class Batch:
 class Shape:
     file_id: int
     name: str
+    transform: Matrix
     vertices: npt.NDArray
     face_indices: npt.NDArray
     batches: list[Batch]
@@ -442,7 +443,7 @@ class AssetReader:
         bs.read_int32()
         if self.source_game == "DH1":
             bs.read_int32()
-        bs.read_matrix_4x4()
+        transform = bs.read_matrix_4x4()
         bs.read_int32()
         shape_batch_group_id = bs.read_uint32()
         material_group_id = bs.read_uint32()
@@ -523,6 +524,7 @@ class AssetReader:
         return Shape(
             shape_id,
             shape_name,
+            transform,
             vertices,
             face_indices,
             batches,

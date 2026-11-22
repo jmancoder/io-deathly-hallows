@@ -376,7 +376,7 @@ def import_shape(
         poly_materials[start:end] = batch.material_index
     mesh.polygons.foreach_set("material_index", poly_materials)
 
-    # Create mesh object with stored name
+    # Create mesh object with stored name and transform
     mesh_name = "Mesh"
     for name in shape.name.split("|")[2:]:
         if name == "EXPORT":
@@ -384,6 +384,7 @@ def import_shape(
         mesh_name = name
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
     context.collection.objects.link(mesh_obj)
+    mesh_obj.matrix_basis
 
     # Attach mesh to armature
     if armature_obj is None:
