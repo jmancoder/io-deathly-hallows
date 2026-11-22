@@ -388,6 +388,23 @@ class AssetReader:
                         ("color", "<u1", 4),
                     ]
                 )
+            case 14:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("uv_0", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 15:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_0", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
             case _:
                 raise ValueError(f"Unknown vertex type {dtype_index}")
 
