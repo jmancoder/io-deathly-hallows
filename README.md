@@ -1,6 +1,12 @@
 # Import/Export Harry Potter and the Deathly Hallows
 A Blender add-on for importing assets extracted from Harry Potter and the Deathly Hallows - Part 1 and Harry Potter and the Deathly Hallows - Part 2. Blender 4.2 or newer is required.
 
+## Installation
+1. Download the latest entry from the [releases](https://github.com/jmancoder/io-deathly-hallows/releases) page.
+2. In Blender, open Edit->Preferences->Add-ons.
+3. Expand the dropdown on the top right and click "Install from Disk...".
+4. Select the downloaded .zip file.
+
 ## Usage
 1. Extract a .bin.gz archive using [this](https://github.com/jmancoder/deathly-hallows-extractor) script.
 2. Open Blender, press N to expand the sidebar, and open the "Deathly Hallows" tab.
