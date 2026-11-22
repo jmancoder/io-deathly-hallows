@@ -9,6 +9,8 @@ from bpy_extras.io_utils import ImportHelper
 from .asset_reader import AssetReader
 from . import asset_importer
 
+LOG_LEVEL = logging.DEBUG
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +68,7 @@ class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
         options={"SKIP_SAVE", "HIDDEN"},
     )
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         reader = _create_asset_reader(context)
         for file_elem in self.files:
             msh_path = Path(self.directory) / str(file_elem.name)
@@ -174,22 +176,23 @@ classes = (
 )
 
 
-def register():
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    logger.addHandler(ch)
+def register() -> None:
+    logger.setLevel(LOG_LEVEL)
+    logger.propagate = False
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(handler)
 
-    for c in classes:
-        bpy.utils.register_class(c)
+    for target_class in classes:
+        bpy.utils.register_class(target_class)
     bpy.types.Scene.iodh_settings = PointerProperty(type=IODH_Settings)
 
 
-def unregister():
-    for h in list(logger.handlers):
-        logger.removeHandler(h)
-        h.close()
+def unregister() -> None:
+    for handler in list(logger.handlers):
+        logger.removeHandler(handler)
+        handler.close()
 
     del bpy.types.Scene.iodh_settings
-    for c in reversed(classes):
-        bpy.utils.unregister_class(c)
+    for target_class in reversed(classes):
+        bpy.utils.unregister_class(target_class)
