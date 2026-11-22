@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from pathlib import Path
@@ -80,19 +81,24 @@ class Skeleton:
 
 class AssetReader:
     def __init__(
-        self, root_path: Path, manifest: dict, source_game: Literal["DH1", "DH2"]
+        self,
+        root_path: Path,
+        manifest: dict,
+        source_game: Literal["DH1", "DH2"],
+        delta_reader: AssetReader | None = None,
     ) -> None:
         self.root_path = root_path
-        self.archive_name = root_path.name
-
         self.manifest = manifest
-        self.source_game: Literal["DH1", "DH2"] = source_game
+        self.source_game = source_game
+        self.delta_reader = delta_reader
+
+        self.archive_name: str = root_path.name
         self.asset_pool: dict[int, Any] = {}
 
     def get_string(self, string_id: int) -> str:
         return self.manifest["strings"][str(string_id)]
 
-    def get_path(self, asset_id: int) -> Path:
+    def get_path(self, asset_id: int, use_delta_root=False) -> Path:
         name = self.get_string(asset_id)
         if ":" in name:
             category, path = name.split(":")
@@ -100,6 +106,8 @@ class AssetReader:
                 path += "." + category
         else:
             path = name
+        if use_delta_root and self.delta_reader is not None:
+            return self.delta_reader.root_path / path
         return self.root_path / path
 
     def read_tex(self, tex_path: Path) -> Texture:
@@ -155,15 +163,17 @@ class AssetReader:
             tex_id = bs.read_uint32()
             if tex_id not in self.asset_pool:
                 tex_path = self.get_path(tex_id)
-                try:
+                if tex_path.is_file():
                     texture = self.read_tex(tex_path)
-                except:
-                    logger.exception(
-                        'Failed to load TEX file at "%s" for material "%s"',
-                        tex_path,
-                        mat_name,
-                    )
-                    texture = Texture(tex_id, tex_path.stem, None, 1, 1, 0)
+                else:
+                    # Load texture from global delta archive, if present
+                    if self.delta_reader is not None:
+                        texture = self.delta_reader.read_tex(
+                            self.get_path(tex_id, use_delta_root=True)
+                        )
+                    else:
+                        logger.error('Failed to load TEX file at "%s"', tex_path)
+                        texture = Texture(tex_id, tex_path.stem, None, 1, 1, 0)
                 self.asset_pool[tex_id] = texture
             else:
                 texture = self.asset_pool[tex_id]

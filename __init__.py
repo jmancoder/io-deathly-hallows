@@ -9,15 +9,21 @@ from bpy_extras.io_utils import ImportHelper
 from .asset_reader import AssetReader
 from . import asset_importer
 
-LOG_LEVEL = logging.DEBUG
-
 logger = logging.getLogger(__name__)
+
+LOG_LEVEL = logging.DEBUG
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
     manifest_path: StringProperty(
         name="Manifest Path",
-        description="Path to the manifest.json file in the extracted .bin.gz archive",
+        description="Path to the manifest.json file in the extracted .bin.gz archive ",
+        subtype="FILE_PATH",
+    )
+    delta_manifest_path: StringProperty(
+        name="Delta Manifest Path",
+        description="Optional path to the manifest.json"
+        "file in the extracted delta-global.bin.gz archive",
         subtype="FILE_PATH",
     )
     source_game: EnumProperty(
@@ -41,10 +47,25 @@ class IODH_Settings(bpy.types.PropertyGroup):
 
 def _create_asset_reader(context: bpy.types.Context) -> AssetReader:
     settings = context.scene.iodh_settings
+
+    if settings.delta_manifest_path:
+        delta_manifest_path = Path(bpy.path.abspath(settings.delta_manifest_path))
+        with open(delta_manifest_path, "rt") as f:
+            delta_manifest = json.load(f)
+        delta_reader = AssetReader(
+            delta_manifest_path.parent, delta_manifest, settings.source_game
+        )
+    else:
+        delta_reader = None
+
+    if not settings.manifest_path:
+        raise ValueError("Manifest path cannot be empty")
     manifest_path = Path(bpy.path.abspath(settings.manifest_path))
     with open(manifest_path, "rt") as f:
         manifest = json.load(f)
-    return AssetReader(manifest_path.parent, manifest, settings.source_game)
+    return AssetReader(
+        manifest_path.parent, manifest, settings.source_game, delta_reader
+    )
 
 
 class IODH_OT_import_msh(bpy.types.Operator, ImportHelper):
@@ -161,6 +182,7 @@ class IODH_PT_main(bpy.types.Panel):
     def draw(self, context: bpy.types.Context) -> None:
         settings = context.scene.iodh_settings
         self.layout.prop(settings, "manifest_path")
+        self.layout.prop(settings, "delta_manifest_path")
         self.layout.prop(settings, "source_game")
         self.layout.operator("import_scene.iodh_skl", icon="IMPORT")
         self.layout.operator("import_scene.iodh_msh", icon="IMPORT")
