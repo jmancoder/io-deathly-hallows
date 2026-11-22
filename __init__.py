@@ -9,9 +9,7 @@ from bpy_extras.io_utils import ImportHelper
 from .asset_reader import AssetReader
 from . import asset_importer
 
-logger = logging.getLogger(__name__)
-
-LOG_LEVEL = logging.WARNING
+logger = logging.getLogger(__package__)
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
@@ -199,7 +197,7 @@ classes = (
 
 
 def register() -> None:
-    logger.setLevel(LOG_LEVEL)
+    logger.setLevel(logging.WARNING)
     logger.propagate = False
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))

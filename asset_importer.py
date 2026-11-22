@@ -6,7 +6,7 @@ import numpy.typing as npt
 
 from . import asset_reader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__package__)
 
 
 def import_tex(tex_data: asset_reader.Texture) -> bpy.types.Image:

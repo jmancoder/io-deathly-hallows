@@ -10,7 +10,7 @@ from mathutils import Matrix
 
 from .binary_reader import BinaryReader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__package__)
 
 
 @dataclass(slots=True)
@@ -440,6 +440,8 @@ class AssetReader:
         bs.read_int32()
         bs.read_int32()
         bs.read_int32()
+        if self.source_game == "DH1":
+            bs.read_int32()
         bs.read_matrix_4x4()
         bs.read_int32()
         shape_batch_group_id = bs.read_uint32()
