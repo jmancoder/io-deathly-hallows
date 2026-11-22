@@ -1,5 +1,5 @@
 # Import/Export Harry Potter and the Deathly Hallows
-A Blender extension for importing meshes from Harry Potter and the Deathly Hallows - Part 1. Blender 4.2 and newer is supported.
+A Blender add-on for importing assets extracted from Harry Potter and the Deathly Hallows - Part 1 and Harry Potter and the Deathly Hallows - Part 2. Blender 4.2 or newer is required.
 
 ## Usage
 1. Extract a .bin.gz archive using [this](https://github.com/jmancoder/deathly-hallows-extractor) script.
@@ -11,6 +11,7 @@ A Blender extension for importing meshes from Harry Potter and the Deathly Hallo
 7. Optionally, select all objects with A and rotate them with R->90.
 
 ## TODO:
-- Handle all vertex types in Deathly Hallows 2 shapes
+- Handle all vertex types in Deathly Hallows 2 shape files
 - Properly apply detail and mask textures
+- Create node groups for more shader types
 - Export shape files
