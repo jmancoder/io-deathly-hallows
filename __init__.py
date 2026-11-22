@@ -11,7 +11,7 @@ from . import asset_importer
 
 logger = logging.getLogger(__name__)
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.WARNING
 
 
 class IODH_Settings(bpy.types.PropertyGroup):
