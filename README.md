@@ -3,13 +3,14 @@ A Blender extension for importing meshes from Harry Potter and the Deathly Hallo
 
 ## Usage
 1. Extract a .bin.gz archive using [this](https://github.com/jmancoder/deathly-hallows-extractor) script.
-2. Open Blender and press N to expand the sidebar.
-3. Open the "Deathly Hallows" tab and expand "Deathly Hallows IO".
-4. Click the folder icon beside "Manifest Path" and select the exported manifest.json file.
-5. To import a level or prop mesh, click "Import MSH". To import a character mesh, click "Import SKL". To import an individual texture, click "Import TEX".
-6. Optionally select all objects and rotate them 90 degrees on the x-axis.
+2. Open Blender, press N to expand the sidebar, and open the "Deathly Hallows" tab.
+3. Set the "Game" property appropriately.
+4. Click the folder icon beside "Manifest Path" and select the extracted manifest.json file.
+5. If importing from Deathly Hallows 2, extract delta-global.bin.gz with the aforementioned script and point "Delta Manifest Path" to its manifest.json file.
+6. To import a level or prop mesh, click "Import MSH". To import a character mesh, click "Import SKL". To import an individual texture, click "Import TEX".
+7. Optionally, select all objects with A and rotate them with R->90.
 
 ## TODO:
+- Handle all vertex types in Deathly Hallows 2 shapes
 - Properly apply detail and mask textures
 - Export shape files
-- Add support for Harry Potter and the Deathly Hallows - Part 2
