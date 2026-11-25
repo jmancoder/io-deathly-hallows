@@ -6,9 +6,8 @@ from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
-from mathutils import Matrix
 
-from .binary_reader import BinaryReader
+from .binary_reader import BinaryReader, Matrix
 
 logger = logging.getLogger(__package__)
 

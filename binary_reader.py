@@ -2,7 +2,12 @@ from io import BytesIO
 import struct
 from typing import Literal
 
-from mathutils import Matrix
+Matrix = tuple[
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+]
 
 
 class BinaryReader(BytesIO):
@@ -58,7 +63,12 @@ class BinaryReader(BytesIO):
         return struct.unpack(self.endian_symbol + "4f", self.read(16))
 
     def read_matrix_4x4(self) -> Matrix:
-        return Matrix([self.read_vec4f() for _ in range(4)]).transposed()
+        return (
+            self.read_vec4f(),
+            self.read_vec4f(),
+            self.read_vec4f(),
+            self.read_vec4f(),
+        )
 
     def read_string(self, length: int) -> str:
         return self.read(length).rstrip(b"\x00").decode()

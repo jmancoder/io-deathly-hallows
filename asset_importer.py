@@ -1,6 +1,7 @@
 import logging
 
 import bpy
+from mathutils import Matrix
 import numpy as np
 import numpy.typing as npt
 
@@ -383,8 +384,8 @@ def import_shape(
             break
         mesh_name = name
     mesh_obj = bpy.data.objects.new(mesh_name, mesh)
+    mesh_obj.matrix_basis = Matrix(shape.transform)
     context.collection.objects.link(mesh_obj)
-    mesh_obj.matrix_basis
 
     # Attach mesh to armature
     if armature_obj is None:
@@ -393,7 +394,6 @@ def import_shape(
     modifier = mesh_obj.modifiers.new("Armature", "ARMATURE")
     modifier.object = armature_obj
 
-    # Create and populate vertex groups
     if bone_names is None:
         return
     if "indices" not in shape.vertices.dtype.names:
@@ -401,6 +401,7 @@ def import_shape(
     if "weights" not in shape.vertices.dtype.names:
         return
 
+    # Create and populate vertex groups
     vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
     bone_indices = _remap_bone_indices(shape)
     weights = shape.vertices["weights"]
