@@ -206,7 +206,6 @@ classes = (
 
 def register() -> None:
     logger.setLevel(logging.WARNING)
-    logger.propagate = False
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     logger.addHandler(handler)
