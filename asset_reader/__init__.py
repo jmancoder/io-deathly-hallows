@@ -159,7 +159,11 @@ class AssetReader:
         tex_map: dict[str, Texture] = {}
         for _ in range(16):
             bs.seek(32, 1)
-            tex_type = self.get_string(bs.read_uint32())
+            tex_type_id = bs.read_uint32()
+            if tex_type_id == 0:
+                # NOTE: This may be an unreliable way to find the end of the texture list
+                break
+            tex_type = self.get_string(tex_type_id)
             tex_id = bs.read_uint32()
             if tex_id not in self.asset_pool:
                 tex_path = self.get_path(tex_id)
