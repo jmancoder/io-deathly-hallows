@@ -1,12 +1,25 @@
 schema_version = "1.0.0"
+
 id = "io_deathly_hallows"
 version = "0.4.0"
 name = "Import-Export Deathly Hallows"
 tagline = "Import/export assets from Harry Potter and the Deathly Hallows"
 maintainer = "jmancoder"
 type = "add-on"
+
 tags = ["Import-Export", "Scene", "Mesh"]
 blender_version_min = "4.2.0"
 license = [
   "SPDX:GPL-3.0-or-later",
+]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "build/",
+  "tests/",
+  ".*",
+  "*.log",
+  "*.zip",
+  "asset_reader/smoke_test.py",
 ]
