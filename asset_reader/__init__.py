@@ -381,6 +381,14 @@ class AssetReader:
                         ("color", "<u1", 4),
                     ]
                 )
+            case 5:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("color", "<u1", 4),
+                        ("uv_0", "<f4", 2),
+                    ]
+                )
             case 9:
                 return np.dtype(
                     [
@@ -406,6 +414,17 @@ class AssetReader:
                         ("position", "<f4", 3),
                         ("normal", "<u1", 4),
                         ("uv_0", "<f2", 2),
+                        ("color", "<u1", 4),
+                    ]
+                )
+            case 16:
+                return np.dtype(
+                    [
+                        ("position", "<f4", 3),
+                        ("normal", "<u1", 4),
+                        ("uv_1", "<f2", 2),
+                        ("weights", "<u1", 4),
+                        ("indices", "<u1", 4),
                         ("color", "<u1", 4),
                     ]
                 )
