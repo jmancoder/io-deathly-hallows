@@ -300,18 +300,20 @@ def import_skl(
 
 
 def _remap_bone_indices(shape: asset_reader.Shape) -> npt.NDArray:
-    original_indices = shape.vertices["indices"]
-    bone_indices = original_indices.copy()
+    local_indices = shape.vertices["indices"]
+    bone_indices = local_indices.copy()
 
     # Reversed so that when a vertex is shared between batches, the earliest batch wins
     for batch in reversed(shape.batches):
-        palette_end = batch.bone_pal_start_idx + batch.bone_pal_len
-        palette = shape.bone_palette[batch.bone_pal_start_idx : palette_end]
+        palette_start = batch.bone_pal_start_idx
+        palette = shape.bone_palette[palette_start : palette_start + batch.bone_pal_len]
 
-        face_end = batch.face_start_index + batch.face_index_count
-        batch_vertices = shape.face_indices[batch.face_start_index : face_end]
+        face_start = batch.face_start_index
+        batch_vertices = shape.face_indices[
+            face_start : face_start + batch.face_index_count
+        ]
 
-        bone_indices[batch_vertices] = palette[original_indices[batch_vertices]]
+        bone_indices[batch_vertices] = palette[local_indices[batch_vertices]]
     return bone_indices
 
 
@@ -401,9 +403,13 @@ def import_shape(
     if "weights" not in shape.vertices.dtype.names:
         return
 
-    # Create and populate vertex groups
     vertex_groups = [mesh_obj.vertex_groups.new(name=name) for name in bone_names]
-    bone_indices = _remap_bone_indices(shape)
+    if len(shape.bone_palette) > 0:
+        bone_indices = _remap_bone_indices(shape)
+    else:
+        bone_indices = shape.vertices["indices"]
+
+    # Create and populate vertex groups
     weights = shape.vertices["weights"]
     for slot in range(weights.shape[1]):
         used = np.flatnonzero(weights[:, slot] > 0)
